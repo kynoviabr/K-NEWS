@@ -51,6 +51,18 @@ export type Database = {
         Update: { status?: JobStatus; result?: Json | null; last_error?: string | null };
         Relationships: [];
       };
+      editorial_decisions: {
+        Row: { id: string; article_id: string; risk_level: RiskLevel; evidence_quality: string; blocked_reasons: Json; is_auto_publishable: boolean; decided_by: string | null; decided_at: string; created_at: string };
+        Insert: { id?: string; article_id: string; risk_level: RiskLevel; evidence_quality: string; blocked_reasons?: Json; is_auto_publishable?: boolean; decided_by?: string | null };
+        Update: { risk_level?: RiskLevel; evidence_quality?: string; blocked_reasons?: Json; is_auto_publishable?: boolean };
+        Relationships: [];
+      };
+      article_evidences: {
+        Row: { id: string; article_id: string; source_url: string; source_label: string | null; captured_at: string };
+        Insert: { id?: string; article_id: string; source_url: string; source_label?: string | null };
+        Update: { source_url?: string; source_label?: string | null };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
