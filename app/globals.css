@@ -1,0 +1,148 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap");
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * K-NEWS Design Tokens — derivados de BLOGGER/app/globals.css com identidade própria.
+ * Paleta: navy editorial + primary em teal jornalístico (distinto do roxo do BLOGGER).
+ * Estrutura preservada; valores adaptados.
+ */
+:root {
+  color-scheme: light;
+  --background: 210 32% 97%;
+  --foreground: 210 68% 14%;
+  --bg-navy: 210 68% 14%;
+  --bg-page: 210 32% 97%;
+  --bg-surface: 0 0% 100%;
+  --bg-subtle: 210 32% 96%;
+  --card: 0 0% 100%;
+  --card-foreground: 210 68% 14%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 210 68% 14%;
+  --primary: 188 92% 38%;
+  --primary-foreground: 0 0% 100%;
+  --primary-dark: 188 85% 30%;
+  --primary-light: 188 88% 94%;
+  --knews-primary: 188 92% 38%;
+  --knews-primary-foreground: 0 0% 100%;
+  --color-teal: 188 92% 38%;
+  --color-teal-dark: 188 85% 30%;
+  --color-amber: 38 92% 50%;
+  --color-coral: 12 88% 58%;
+  --secondary: 210 32% 96%;
+  --secondary-foreground: 210 68% 14%;
+  --muted: 210 32% 96%;
+  --muted-foreground: 214 18% 36%;
+  --text-secondary: 214 18% 36%;
+  --text-muted: 212 16% 56%;
+  --accent: 38 92% 50%;
+  --accent-foreground: 210 68% 14%;
+  --destructive: 348 78% 49%;
+  --destructive-foreground: 0 0% 100%;
+  --danger-bg: 343 71% 94%;
+  --success: 152 79% 27%;
+  --success-bg: 144 64% 89%;
+  --warning: 31 100% 29%;
+  --warning-bg: 48 100% 90%;
+  --info: 188 85% 30%;
+  --info-bg: 188 88% 94%;
+  --border: 214 30% 91%;
+  --input: 214 30% 91%;
+  --border-hover: 214 14% 79%;
+  --ring: 188 92% 38%;
+  --radius: 0.625rem;
+  --radius-chip: 4px;
+  --radius-btn: 6px;
+  --radius-card: 10px;
+  --radius-modal: 20px;
+  --radius-pill: 9999px;
+  --gradient-primary: linear-gradient(135deg, hsl(188 92% 38%), hsl(188 85% 30%));
+  --gradient-accent: linear-gradient(135deg, hsl(188 92% 38%), hsl(38 92% 50%));
+  --gradient-hero: linear-gradient(135deg, hsl(210 68% 14%) 0%, hsl(188 85% 22%) 100%);
+  --gradient-surface: linear-gradient(180deg, hsl(210 32% 97%), hsl(210 32% 95%));
+  --shadow-sm: 0 2px 5px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 8px 24px rgba(120, 135, 150, 0.14);
+  --shadow-lg: 0 16px 48px rgba(10, 37, 64, 0.12);
+  --shadow-focus: 0 0 0 3px rgba(14, 165, 179, 0.18);
+  --shadow-glow: 0 8px 24px rgba(14, 165, 179, 0.18);
+  --font-heading: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "SF Mono", Menlo, Consolas, "Courier New", monospace;
+  --sidebar-background: 210 68% 14%;
+  --sidebar-foreground: 0 0% 100%;
+  --sidebar-primary: 188 92% 38%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 210 50% 22%;
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-border: 210 40% 25%;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-body);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading);
+  letter-spacing: -0.015em;
+}
+
+h1 { letter-spacing: -0.025em; line-height: 1.1; }
+h2 { letter-spacing: -0.02em; line-height: 1.15; }
+h3 { letter-spacing: -0.01em; line-height: 1.3; }
+
+code,
+kbd,
+samp {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+}
+
+::selection {
+  background: hsl(var(--primary) / 0.2);
+  color: hsl(var(--foreground));
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+.gradient-primary { background: var(--gradient-primary); }
+.gradient-accent { background: var(--gradient-accent); }
+.gradient-hero { background: var(--gradient-hero); }
+.gradient-surface { background: var(--gradient-surface); }
+.shadow-card { box-shadow: var(--shadow-sm); }
+.shadow-card-hover { box-shadow: var(--shadow-md); }
+.shadow-glow { box-shadow: var(--shadow-glow); }
+.glass { backdrop-filter: blur(14px); background: hsl(0 0% 100% / 0.92); }
+.glass-navy { backdrop-filter: blur(14px); background: hsl(var(--bg-navy) / 0.97); }
+.label-stripe { color: hsl(var(--text-muted)); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.knews-badge { background: hsl(var(--knews-primary)); color: hsl(var(--knews-primary-foreground)); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

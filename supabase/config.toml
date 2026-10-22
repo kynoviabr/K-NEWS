@@ -1,0 +1,9 @@
+[functions.knews-jobs]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/knews-jobs/index.ts"
+
+[functions.knews-publish]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/knews-publish/index.ts"
