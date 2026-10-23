@@ -106,19 +106,47 @@ function extractClaims(body: string): string[] {
     .slice(0, 20);
 }
 
-function verifyClaimsAgainstEvidences(claims: string[], evidences: Evidence[]): string[] {
-  const unverified: string[] = [];
-  const evidenceText = evidences.map((e) => (e.contentSnippet ?? e.sourceLabel ?? "")).join(" ").toLowerCase();
-  const evidenceTokens = new Set(evidenceText.split(/\W+/).filter((t) => t.length > 4));
-  for (const claim of claims) {
-    const claimTokens = claim.toLowerCase().split(/\W+/).filter((t) => t.length > 4);
-    if (claimTokens.length === 0) continue;
-    const overlap = claimTokens.filter((t) => evidenceTokens.has(t)).length / claimTokens.length;
-    if (overlap < 0.3) {
-      unverified.push(claim);
+export type FactCheck = { claim: string; supported: boolean; contradictions: string[]; stale: boolean };
+
+function keyFacts(s: string): string[] {
+  return s.toLowerCase().split(/\W+/).filter((t) => t.length > 5 && !/^(sobre|atrav|segundo|acordo|durante)$/.test(t));
+}
+
+function hasPromptInjection(text: string): boolean {
+  return /(ignore.*instructions|system prompt|reveal.*prompt|\[SYSTEM\])/i.test(text);
+}
+
+function isStaleEvidence(evidence: Evidence, claimDate: string | null): boolean {
+  if (!evidence.capturedAt || !claimDate) return false;
+  const ev = new Date(evidence.capturedAt).getTime();
+  const cl = new Date(claimDate).getTime();
+  if (isNaN(ev) || isNaN(cl)) return false;
+  return cl - ev > 365 * 24 * 60 * 60 * 1000;
+}
+
+export function factCheckClaims(claims: string[], evidences: Evidence[]): FactCheck[] {
+  const snippets = evidences.map((e) => ({ text: (e.contentSnippet ?? e.sourceLabel ?? "").toLowerCase(), host: hostOf(e.sourceUrl) ?? "" }));
+  return claims.map((claim) => {
+    const claimFacts = keyFacts(claim);
+    let supported = false;
+    const contradictions: string[] = [];
+    let stale = false;
+    for (const sn of snippets) {
+      const snippetFacts = new Set(sn.text.split(/\W+/).filter((t) => t.length > 4));
+      const matched = claimFacts.filter((f) => snippetFacts.has(f)).length;
+      if (claimFacts.length > 0 && matched / claimFacts.length >= 0.5) supported = true;
+      if (sn.text.includes("nao ocorreu") || sn.text.includes("desmentido") || sn.text.includes("falso")) {
+        if (claimFacts.some((f) => sn.text.includes(f))) contradictions.push(`Contradicao em ${sn.host}: ${sn.text.slice(0, 80)}`);
+      }
     }
-  }
-  return unverified;
+    if (evidences.some((e) => isStaleEvidence(e, new Date().toISOString()))) stale = true;
+    if (hasPromptInjection(claim)) supported = false;
+    return { claim, supported, contradictions, stale };
+  });
+}
+
+function verifyClaimsAgainstEvidences(claims: string[], evidences: Evidence[]): string[] {
+  return factCheckClaims(claims, evidences).filter((f) => !f.supported).map((f) => f.claim);
 }
 
 export function classifyRiskFromContext(ctx: EditorialContext): RiskAssessment {
