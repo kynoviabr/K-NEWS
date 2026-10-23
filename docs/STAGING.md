@@ -1,42 +1,64 @@
-# Staging — Ambiente de homologacao separado
+# Staging — Homologacao no mesmo Supabase (sem dados BLOGGER)
 
-> **Nao aplicar migrations em producao sem aprovacao.** Todas as migrations em `supabase/migrations/` estao com header `NAO APLICAR EM PRODUCAO`.
+> **Nao aplicar migrations sem revisar.** Todas as migrations em `supabase/migrations/` usam schema `knews` isolado de `public.*` (BLOGGER: `pnhxvhjudtrzvwduuigj`) e tem header `NAO APLICAR EM PRODUCAO SEM APROVACAO`.
 
-## Projeto Supabase de staging
+## Estratégia aprovada: mesmo projeto Supabase do BLOGGER
 
-Crie um **projeto Supabase novo e vazio** para homologacao (nao reutilize `pnhxvhjudtrzvwduuigj` do BLOGGER).
+- **Homologacao no projeto existente** `pnhxvhjudtrzvwduuigj` — sem novo projeto, sem custo, sem segredos novos.
+- **Isolamento por `knews`:** as 12 migrations só tocam `knews.*` e `storage.objects` bucket `knews-creative`; `public.*` do BLOGGER não é tocado.
+- **Sem URL final agora:** sem `portal24h.news` DNS; teste por `Host: guaruja.localhost` ou `http://localhost:3000` com header `Host`.
+- **Variaveis:** reutilize `.env` do projeto existente (`NEXT_PUBLIC_SUPABASE_URL` de `pnhxvhjudtrzvwduuigj`); não exponha `SUPABASE_SERVICE_ROLE_KEY` no frontend.
 
 ```bash
-supabase link --project-ref <STAGING_REF>
-supabase db push --linked   # aplica supabase/migrations/ em ordem
+supabase link --project-ref pnhxvhjudtrzvwduuigj
+supabase db push --linked   # 12 migrations knews em ordem — revisar diff antes
 supabase functions deploy knews-jobs knews-publish
 ```
 
-## Variaveis
+## Validacao (sem dados BLOGGER)
 
-Copie `.env.example` para `.env` e `.env.local` com credenciais do projeto de staging **(sem segredos do BLOGGER)**.
+### 1. RLS entre Guarujá e Santos
 
-- `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` — staging
-- `SUPABASE_SERVICE_ROLE_KEY` — staging
-- `CRON_SECRET` — gere novo `openssl rand -hex 32`
-- `NEXT_PUBLIC_APP_URL` — `http://localhost:3000` local ou URL Vercel preview
-- `portal24h.news` wildcard **nao** aponta DNS em staging; teste por `Host` header ou `/etc/hosts`
+Criar 2 cidades (`guaruja`, `santos`) + 2 portais + `portal_domains` ficticios + 2 usuários com `portal_members` distintos.
 
-## Validacao
-
-```bash
-npm run typecheck && npm test && npm run build
-# Integracao contra staging (após db push):
-# - knews.jobs claim com 2 workers (SKIP LOCKED)
-# - lease expirado / worker interrompido / retry / DLQ
-# - reserve_ad idempotente + isolamento por cidade/host
-# - sitemap/robots por portal
+```sql
+set role anon; select count(*) from knews.articles; -- 0
+set role authenticated; set request.jwt.claim.sub = '<user_guaruja>'; select * from knews.articles where portal_id = <id_santos>; -- 0
 ```
 
-## Dados
+### 2. Jobs concorrentes, lease e DLQ
 
-Sem dados reais nem segredos do BLOGGER. Crie `knews.cities`/`knews.portals`/`knews.portal_domains` ficticios (`guaruja`, `santos`) e campanhas de teste.
+```sql
+insert into knews.jobs(portal_id, job_type, payload, priority) values
+  ('<p_guaruja>', 'rss_fetch', '{}', 100),
+  ('<p_guaruja>', 'rss_fetch', '{}', 100);
+-- 2 workers claim_jobs('worker-1',1,60) vs worker-2 → 0 sobreposição (SKIP LOCKED)
+-- Lease expirado: update lease_expires_at = now() - interval '1 minute' → próximo claim recupera retrying
+-- max_attempts → dead_letter; unique(portal_id, idempotency_key) sem duplicar
+```
 
-## Vercel wildcard
+### 3. Reserva transacional de publicidade
 
-`*.portal24h.news` em Vercel → Domains — apenas apos homologacao e autorizacao de DNS (`*.portal24h.news` → `cname.vercel-dns.com`).
+```sql
+select knews.reserve_ad('<campaign_id>', 'slot_topo', 'idem-1', 300);
+select knews.reserve_ad('<campaign_id>', 'slot_topo', 'idem-1', 300); -- idempotente
+select knews.expire_stale_reservations();
+```
+
+### 4. Pipeline editorial + evidências
+
+RSS → `fetchRssSafe` (timeout, maxBytes, SSRF) → `deduplicateByCanonical` → `persistentDedupKeys` (`knews.processed_canonicals`) → `classifyRiskFromContext` (independent hosts, `factCheckClaims`, stale, prompt injection) → `isAutoPublishable` só `low+strong`. Autopublicação real desabilitada até homologação.
+
+### 5. Sitemap/robots e Storage
+
+`GET /sitemap.xml` com `Host: guaruja.localhost` retorna URLs isoladas; `Host: santos.localhost` isolado. Upload `storage.objects` `knews-creative/<campaign_id>/<uuid>-<file>`.
+
+### 6. Checks CI
+
+```bash
+npm ci && npm run typecheck && npm run lint && npm test && npm run build
+```
+
+## Vercel
+
+Sem `portal24h.news` agora; usar `localhost` ou preview sem domínio final. Wildcard `*.portal24h.news` → `cname.vercel-dns.com` só após homologação autorizada.
