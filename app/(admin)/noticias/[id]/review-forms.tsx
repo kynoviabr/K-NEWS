@@ -13,7 +13,17 @@ function Status({ state }: { state: ReviewState }) {
   return <p role="status" className={state.ok ? "text-sm text-emerald-700" : "text-sm text-destructive"}>{state.message}</p>;
 }
 
-export function EditForm({ article }: { article: { id: string; title: string; excerpt: string | null; body: string } }) {
+type EditableArticle = { id: string; title: string; excerpt: string | null; body: string; category: string | null; neighborhood_id: string | null };
+
+export function EditForm({
+  article,
+  categories,
+  neighborhoods,
+}: {
+  article: EditableArticle;
+  categories: Array<{ slug: string; name: string }>;
+  neighborhoods: Array<{ id: string; name: string }>;
+}) {
   const [state, action, pending] = useActionState<ReviewState, FormData>(saveDraft, null);
   return (
     <form action={action} className="space-y-3">
@@ -25,6 +35,26 @@ export function EditForm({ article }: { article: { id: string; title: string; ex
       <div className="space-y-1">
         <Label htmlFor="excerpt">Linha fina</Label>
         <Input id="excerpt" name="excerpt" defaultValue={article.excerpt ?? ""} />
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1">
+          <Label htmlFor="category">Editoria</Label>
+          <Select id="category" name="category" defaultValue={article.category ?? ""}>
+            <option value="">Sem editoria</option>
+            {categories.map((c) => (
+              <option key={c.slug} value={c.slug}>{c.name}</option>
+            ))}
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="neighborhood_id">Bairro</Label>
+          <Select id="neighborhood_id" name="neighborhood_id" defaultValue={article.neighborhood_id ?? ""}>
+            <option value="">Cidade toda</option>
+            {neighborhoods.map((n) => (
+              <option key={n.id} value={n.id}>{n.name}</option>
+            ))}
+          </Select>
+        </div>
       </div>
       <div className="space-y-1">
         <Label htmlFor="body">Texto</Label>
