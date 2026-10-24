@@ -7,6 +7,7 @@ export type PublicPortal = { id: string; slug: string; name: string; city: strin
 export type PublicArticleSummary = { slug: string; title: string; excerpt: string | null; category: string | null; published_at: string; updated_at: string };
 export type PublicArticle = PublicArticleSummary & {
   body: string;
+  neighborhood: string | null;
   version: number;
   evidences: Array<{ url: string; label: string | null; type: string; captured_at: string }>;
   corrections: Array<{ note: string; at: string }>;
