@@ -1,9 +1,18 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { extractCitySlugFromHost } from "@/lib/domains";
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request: { headers: request.headers } });
   const pathname = request.nextUrl.pathname;
+  const host = request.headers.get("host") ?? "";
+  const citySlug = extractCitySlugFromHost(host);
+
+  // Expose cidade resolvida por header para Server Components
+  if (citySlug) {
+    response.headers.set("x-knews-city", citySlug);
+    response.headers.set("x-knews-host", host);
+  }
 
   const isAuthCallback = pathname === "/auth/callback";
   const isHealth = pathname === "/api/health";
@@ -25,6 +34,11 @@ export async function middleware(request: NextRequest) {
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
         response = NextResponse.next({ request });
+        // Re-apply city headers after recreating response
+        if (citySlug) {
+          response.headers.set("x-knews-city", citySlug);
+          response.headers.set("x-knews-host", host);
+        }
         cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
       },
     },
