@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { canSell, getAdminContext } from "@/lib/admin-context";
+import { canSell, getAdminContext, isSuperAdmin } from "@/lib/admin-context";
 import { getKnewsSessionClient } from "@/lib/supabase/knews";
 import { formatCents } from "@/lib/ads/visitor";
 import { NotSignedIn, PortalSwitcher } from "../portal-switcher";
@@ -135,10 +135,15 @@ export default async function AnunciantesPage() {
                     <Label htmlFor="total_value_cents">Valor total (R$)</Label>
                     <Input id="total_value_cents" name="total_value_cents" inputMode="decimal" required placeholder="1.500,00" />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="commission_pct">Comissão do parceiro (%)</Label>
-                    <Input id="commission_pct" name="commission_pct" type="number" min={0} max={100} step="0.01" defaultValue={0} />
-                  </div>
+                  {isSuperAdmin(ctx) ? (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="commission_pct">Comissão do parceiro (%)</Label>
+                      <Input id="commission_pct" name="commission_pct" type="number" min={0} max={100} step="0.01" defaultValue={0} />
+                      <p className="text-xs text-muted-foreground">Em branco ou 0: vale a comissão do território.</p>
+                    </div>
+                  ) : (
+                    <p className="self-end text-xs text-muted-foreground">Parceiro e comissão vêm do território do portal.</p>
+                  )}
                   <div className="space-y-1.5">
                     <Label htmlFor="ct_status">Situação</Label>
                     <Select id="ct_status" name="status" defaultValue="draft">
