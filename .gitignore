@@ -30,3 +30,7 @@ yarn-error.log*
 .vercel
 .claude/settings.local.json
 tsconfig.tsbuildinfo
+
+# Supabase CLI local state
+supabase/.branches
+supabase/.temp
