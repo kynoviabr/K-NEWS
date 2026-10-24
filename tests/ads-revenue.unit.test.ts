@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeCommissions, detectDevice, hasAdsConsent, hashVisitor, isSafeRedirectUrl, parseMoneyToCents, summarizeRevenue } from "@/lib/ads/visitor";
+import { detectDevice, hasAdsConsent, hashVisitor, isSafeRedirectUrl, parseMoneyToCents, summarizeRevenue } from "@/lib/ads/visitor";
 import { campaignSchema, contractSchema, linkSchema, revenueSchema, saoPauloLocalToIso, validateCreativeFile } from "@/lib/validations/ads.schema";
 
 const UUID = "10000000-0000-4000-8000-000000000021";
@@ -47,11 +47,7 @@ describe("dinheiro e receitas", () => {
     expect(parseMoneyToCents("-5")).toBeNaN();
   });
 
-  it("comissao so sobre receita confirmada ou paga de contrato com parceiro", () => {
-    const contracts = [
-      { id: "c1", reference: "GRJ-1", partner_id: "p1", commission_pct: 10 },
-      { id: "c2", reference: "GRJ-2", partner_id: null, commission_pct: 15 },
-    ];
+  it("receita confirmada separada da estimada", () => {
     const revenue = [
       { source: "direct", status: "confirmed", amount_cents: 100000, contract_id: "c1" },
       { source: "direct", status: "paid", amount_cents: 50000, contract_id: "c1" },
@@ -60,7 +56,6 @@ describe("dinheiro e receitas", () => {
       { source: "direct", status: "confirmed", amount_cents: 80000, contract_id: "c2" },
       { source: "adsense", status: "confirmed", amount_cents: 3000, contract_id: null },
     ];
-    expect(computeCommissions(revenue, contracts)).toEqual([{ contractId: "c1", reference: "GRJ-1", partnerId: "p1", baseCents: 150000, pct: 10, commissionCents: 15000 }]);
     expect(summarizeRevenue(revenue.filter((r) => r.status !== "cancelled"))).toEqual({ confirmedCents: 233000, estimatedCents: 999999 });
   });
 });

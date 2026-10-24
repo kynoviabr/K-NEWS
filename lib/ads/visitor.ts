@@ -40,27 +40,7 @@ export function isSafeRedirectUrl(raw: string | null | undefined): boolean {
 }
 
 export type RevenueRow = { source: string; status: string; amount_cents: number; contract_id: string | null };
-export type ContractRow = { id: string; reference: string; partner_id: string | null; commission_pct: number };
-export type CommissionLine = { contractId: string; reference: string; partnerId: string; baseCents: number; pct: number; commissionCents: number };
-
-// Comissao incide so sobre receita confirmada ou paga de contratos com parceiro.
-export function computeCommissions(revenue: RevenueRow[], contracts: ContractRow[]): CommissionLine[] {
-  const byId = new Map(contracts.map((c) => [c.id, c]));
-  const base = new Map<string, number>();
-  for (const r of revenue) {
-    if (!r.contract_id || (r.status !== "confirmed" && r.status !== "paid")) continue;
-    base.set(r.contract_id, (base.get(r.contract_id) ?? 0) + Number(r.amount_cents));
-  }
-  const lines: CommissionLine[] = [];
-  for (const [contractId, baseCents] of base) {
-    const c = byId.get(contractId);
-    if (!c?.partner_id || Number(c.commission_pct) <= 0) continue;
-    const pct = Number(c.commission_pct);
-    lines.push({ contractId, reference: c.reference, partnerId: c.partner_id, baseCents, pct, commissionCents: Math.round((baseCents * pct) / 100) });
-  }
-  return lines.sort((a, b) => b.commissionCents - a.commissionCents);
-}
-
+// Comissoes sao calculadas no banco (knews.partner_commissions), a partir da receita confirmada.
 export function summarizeRevenue(revenue: RevenueRow[]): { confirmedCents: number; estimatedCents: number } {
   let confirmedCents = 0;
   let estimatedCents = 0;
