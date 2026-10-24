@@ -43,6 +43,24 @@ describe("schema knews: anon", () => {
   });
 });
 
+describe("funcoes privilegiadas", () => {
+  it("fila e ad server so executam com service_role", async () => {
+    const res = await db.query<{ proname: string }>(
+      `select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'knews'
+         and p.proname in ('claim_jobs','complete_job','fail_job','heartbeat_job','expire_stale_reservations','get_job_health','reserve_ad')
+         and (has_function_privilege('authenticated', p.oid, 'execute') or not has_function_privilege('service_role', p.oid, 'execute'))`,
+    );
+    expect(res.rows.map((r) => r.proname)).toEqual([]);
+  });
+
+  it("usuario autenticado nao reivindica jobs via RPC", async () => {
+    await asActor(db, { role: "authenticated", userId: IDS.outsider }, async (c) => {
+      expect((await tryQuery(c, "select * from knews.claim_jobs('intruso', 10, 60)")).error).toMatch(/permission denied/);
+    });
+  });
+});
+
 describe("isolamento entre portais (Guarujá x Santos)", () => {
   it("editor de Guarujá ve so artigos de Guarujá", async () => {
     await asActor(db, { role: "authenticated", userId: IDS.editorGuaruja }, async (c) => {
@@ -86,7 +104,7 @@ describe("usuario autenticado sem vinculo K-NEWS (Auth compartilhado com BLOGGER
 
   it("nao ve nenhum dado de negocio do K-NEWS", async () => {
     await asActor(db, outsider, async (c) => {
-      for (const table of ["regions", "cities", "neighborhoods", "portals", "portal_domains", "portal_members", "articles", "advertisers", "ad_campaigns", "sources", "jobs"]) {
+      for (const table of ["regions", "cities", "neighborhoods", "portals", "portal_domains", "portal_members", "articles", "advertisers", "ad_campaigns", "sources", "jobs", "partners", "partner_territories", "processed_canonicals", "audit_logs"]) {
         expect(await count(c, `select 1 from knews.${table}`), table).toBe(0);
       }
     });

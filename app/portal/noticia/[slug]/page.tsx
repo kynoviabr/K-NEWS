@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AdSlot } from "@/components/advertising/ad-slot";
 import { newsArticleJsonLd } from "@/lib/seo";
 import { canonicalUrl } from "@/lib/portal";
+import { extractCitySlugFromHost } from "@/lib/domains";
 
 const DEMO: Record<string, { title: string; excerpt: string; body: string; category: string; publishedAt: string }> = {
   "guaruja-inaugura-nova-unidade-saude": {
@@ -26,8 +28,9 @@ export default async function NoticiaPage({ params }: { params: Promise<{ slug: 
   const { slug } = await params;
   const article = DEMO[slug];
   if (!article) return notFound();
-
-  const url = canonicalUrl(`/portal/noticia/${slug}`);
+  const h = await headers();
+  const citySlug = h.get("x-knews-city") ?? extractCitySlugFromHost(h.get("host"));
+  const url = canonicalUrl(`/portal/noticia/${slug}`, citySlug);
   const jsonLd = newsArticleJsonLd({
     headline: article.title,
     description: article.excerpt,
@@ -42,7 +45,7 @@ export default async function NoticiaPage({ params }: { params: Promise<{ slug: 
       <div className="space-y-2">
         <Badge>{article.category}</Badge>
         <h1 className="font-heading text-3xl font-bold leading-tight tracking-tight">{article.title}</h1>
-        <p className="text-sm text-muted-foreground">{new Date(article.publishedAt).toLocaleDateString("pt-BR")}</p>
+        <p className="text-sm text-muted-foreground">{new Date(article.publishedAt).toLocaleDateString("pt-BR")} • {url}</p>
       </div>
       <AdSlot slotId="in-article-top" fallbackLabel="Anuncio — dentro da materia" className="flex min-h-[120px] items-center justify-center rounded-lg border border-dashed bg-muted/50 px-4 py-8 text-center" />
       <Card>

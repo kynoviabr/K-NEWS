@@ -1,6 +1,6 @@
 # Homologação em PostgreSQL local (Supabase Docker)
 
-> **Data:** 2026-10-24 · **Base auditada:** `origin/main` `980451e` · **Ambiente:** Supabase CLI 2.122.0, Postgres 17 em Docker, sem conexão com o projeto remoto.
+> **Data:** 2026-10-24 · **Base auditada:** `origin/main` `980451e` + `feat/homologacao-final` `3bd0224` (commits recuperados do clone local) · **Ambiente:** Supabase CLI 2.122.0, Postgres 17 em Docker, sem conexão com o projeto remoto.
 
 ## Como rodar
 
@@ -28,28 +28,30 @@ use `SUPABASE_INTERNAL_IMAGE_REGISTRY=docker.io npx supabase start`.
 | 4 | `cities`, `neighborhoods`, `portal_domains`, `portal_members` com RLS mas sem política: painel não conseguiria ler nada. | Funcional | Políticas de leitura por vínculo; usuário lê os próprios vínculos. |
 | 5 | `knews.update_updated_at_column()` executável por `anon`. | Baixa | `revoke` de `public/anon/authenticated`. |
 | 6 | Edge Function `knews-jobs`: qualquer `Authorization: Bearer <qualquer coisa>` ou GET sem cabeçalho passava e usava a service role. | Alta | Exige `CRON_SECRET`. |
+| 7 | `20261026000001_knews_news_admin.sql` recriava `knews.article_evidences` e a política `knews_evidences_select`: a migration falhava; com `if not exists` as colunas `source_type`/`content_snippet` nunca seriam criadas. | Bloqueante | Corrigido no próprio arquivo com `alter table ... add column if not exists`. |
+| 8 | `20261026000003_knews_social_partners.sql` com o mesmo `unique(... coalesce ...)` inválido. | Bloqueante | Índice único por expressão. |
+| 9 | `claim_jobs`, `complete_job`, `fail_job`, `heartbeat_job`, `expire_stale_reservations`, `get_job_health` (SECURITY DEFINER) executáveis por PUBLIC; `reserve_ad` por qualquer autenticado. Qualquer usuário logado, inclusive do BLOGGER, podia manipular a fila e consumir orçamento de campanhas. | Crítica | Somente `service_role`. A rota `/api/ads/reserve` passa a usar o cliente de servidor com `schema("knews")` (antes chamava `public.reserve_ad`) e limita por IP. |
+| 10 | Storage `knews-creative`: qualquer autenticado lia e enviava qualquer criativo. | Alta | Caminho `<campaign_id>/<arquivo>` e política via `knews.can_edit_campaign()`. |
+| 11 | `knews.partners` com `using (true)` e `partner_territories` (comissões) legíveis por qualquer autenticado. | Alta | Somente `super_admin` até o RBAC de parceiros. |
 
-## Testes de integração reais (12)
+## Testes de integração reais (21)
 
-`tests/integration/rls-isolation.int.test.ts`, com dados sintéticos de Guarujá e Santos:
-anon sem acesso ao schema e às funções; editor de Guarujá não lê, altera, apaga nem cria
-conteúdo de Santos; parceiro comercial não edita conteúdo editorial; usuário sem vínculo
-K-NEWS não vê nada; anunciantes restritos a `super_admin`. Rodam também no CI (job `db-integration`).
+Rodam no CI (job `db-integration`) contra um Supabase efêmero, com dados sintéticos de Guarujá e Santos:
 
-## Estado dos módulos no GitHub (`main` 980451e)
+- `rls-isolation.int.test.ts`: anon sem acesso ao schema e às funções; funções da fila e do ad server só com `service_role`; editor de Guarujá não lê, altera, apaga nem cria conteúdo de Santos; parceiro comercial não edita conteúdo editorial; usuário sem vínculo K-NEWS não vê nada; anunciantes restritos a `super_admin`.
+- `jobs-queue.int.test.ts`: 4 conexões concorrentes em `claim_jobs` sem sobreposição; recuperação de lease vencido (queda do worker); backoff, dead-letter e `job_events`; idempotência.
+- `ad-reserve.int.test.ts`: 60 reservas simultâneas com cap 25 entregam exatamente 25; mesma chave de idempotência consome uma vez.
+
+## Estado dos módulos (após conciliação com `feat/homologacao-final`)
 
 | Módulo | Classificação |
 |---|---|
 | Fundação (Next.js, auth SSR, middleware, design system, CI) | Implementado com testes simulados (typecheck, lint, build ok) |
-| Schema `knews` + RLS de portais/artigos | Concluído e testado em integração real (após as correções acima) |
-| Jobs duráveis | Parcialmente implementado: tabela existe; não há `claim_jobs`, `enqueue`, `job_events`, lease ou dead-letter no `main` |
-| News Intelligence | Parcialmente implementado: normalização de URL e dedup em memória (`services/rss.ts`), motor editorial (`lib/editorial.ts`); sem coleta real, IA, rascunhos ou fila |
-| Portal público | Parcialmente implementado: páginas usam dados demonstrativos fixos; sem leitura do banco nem resolução por hostname em uso |
-| Ad Management | Parcialmente implementado: elegibilidade em TS com testes simulados; sem `reserve_ad`, impressões, cliques ou CRUD |
-| Social (Meta) | Não implementado (apenas página stub) |
-| Parceiros regionais | Não implementado (apenas página stub e papéis em `portal_members`) |
+| Schema `knews` + RLS de portais/artigos/anunciantes/parceiros | Concluído e testado em integração real |
+| Jobs duráveis (claim, lease, retry, DLQ) | Funções SQL testadas em integração real; falta worker conectado aos handlers e agendamento |
+| Reserva de anúncio (`reserve_ad`) | SQL testado em integração real sob concorrência; rota de decisão (`/api/ads/decision`) ainda consulta o schema `public` e não funciona |
+| News Intelligence | Parcialmente implementado: fetch seguro, dedup, claims e IA com testes simulados; sem coleta conectada ao banco nem fila de revisão |
+| Portal público | Parcialmente implementado: ainda usa dados demonstrativos; o middleware grava a cidade em cabeçalho de resposta, que os Server Components não leem |
+| Social (Meta) e parceiros | Tabelas criadas; sem integração nem CRUD |
 
-Itens do handover ausentes do GitHub (provavelmente só nos commits locais `7ca0149`/`3bd0224`):
-`services/rss-fetch.ts`, `services/ai-provider.ts`, `lib/news-pipeline.ts`, `lib/claim-extractor.ts`,
-`lib/geo.ts`, `lib/domains.ts`, `knews.reserve_ad`, `claim_jobs`, ~7 migrations, `docs/STAGING.md`,
-`docs/LAUNCH-CHECKLIST.md`.
+`docs/STAGING.md` (dos commits recuperados) descrevia "12 migrations com validação completa", mas duas delas não aplicavam; a contagem atual é 13 e a validação real é a descrita aqui.
