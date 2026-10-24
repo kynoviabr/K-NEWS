@@ -22,5 +22,9 @@ export async function POST(request: Request) {
   const due = await db.schema("knews").rpc("enqueue_due_source_fetches");
   if (due.error) return NextResponse.json({ error: due.error.message }, { status: 500 });
   const report = await runWorker({ db, workerId: `vercel-${crypto.randomUUID().slice(0, 8)}`, fetchOptions: { allowPrivateNetwork: allowPrivateFeeds() } }, 10);
-  return NextResponse.json({ enqueued_fetches: due.data, ...report });
+  // Manutencao do motor de anuncios: devolve inventario de reservas abandonadas e
+  // encerra campanhas vencidas ou entregues.
+  const expired = await db.schema("knews").rpc("expire_stale_reservations");
+  const closed = await db.schema("knews").rpc("close_finished_campaigns");
+  return NextResponse.json({ enqueued_fetches: due.data, ...report, ads: { expired_reservations: expired.data, closed_campaigns: closed.data } });
 }

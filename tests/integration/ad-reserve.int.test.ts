@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Client } from "pg";
 import { connect } from "./db";
-import { IDS, seed } from "./fixtures";
+import { IDS, createCampaign, deleteCampaigns, seed } from "./fixtures";
 
 // knews.reserve_ad sob concorrencia real: o cap de impressoes nunca e ultrapassado.
 const CAMPAIGN = "00000000-0000-4000-8000-000000000061";
@@ -21,19 +21,14 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await admin.query("delete from knews.ad_campaigns where id = $1", [CAMPAIGN]);
+  await deleteCampaigns(admin, [CAMPAIGN]);
   await admin.query("delete from knews.ad_slots where code = $1", [SLOT]);
   await Promise.all([admin, ...conns].map((c) => c.end()));
 });
 
 async function resetCampaign(cap: number): Promise<void> {
-  await admin.query("delete from knews.ad_campaigns where id = $1", [CAMPAIGN]);
-  await admin.query(
-    `insert into knews.ad_campaigns (id, advertiser_id, portal_id, name, status, starts_at, ends_at, impressions_cap)
-     values ($1, $2, $3, 'Campanha teste', 'active', now() - interval '1 day', now() + interval '1 day', $4)`,
-    [CAMPAIGN, IDS.advertiser, IDS.portalGuaruja, cap],
-  );
-  await admin.query("insert into knews.ad_campaign_placements (campaign_id, slot_code) values ($1, $2)", [CAMPAIGN, SLOT]);
+  await deleteCampaigns(admin, [CAMPAIGN]);
+  await createCampaign(admin, { id: CAMPAIGN, slots: [SLOT], impressionsCap: cap });
 }
 
 async function reserve(c: Client, key: string): Promise<"ok" | "idempotent" | "rejected"> {

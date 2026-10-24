@@ -12,6 +12,13 @@ export function canEdit(m: Membership | null): boolean {
   return !!m && EDITOR_ROLES.has(m.role);
 }
 
+// Area comercial (anuncios, contratos, receitas) e separada da redacao.
+const SALES_ROLES = new Set(["super_admin", "regional_manager", "commercial_partner"]);
+
+export function canSell(m: Membership | null): boolean {
+  return !!m && SALES_ROLES.has(m.role);
+}
+
 // Usuario logado + vinculos ativos no K-NEWS. null = nao logado.
 export async function getAdminContext(): Promise<AdminContext | null> {
   let session;
