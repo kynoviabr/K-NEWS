@@ -24,3 +24,9 @@ export function canonicalUrl(path: string, citySlug?: string | null): string {
   const clean = path.startsWith("/") ? path : `/${path}`;
   return `${base}${clean}`;
 }
+
+// URL canonica do portal: dominio principal cadastrado ou <slug>.portal24h.news.
+export function portalUrl(portal: { slug: string; primary_domain?: string | null }, path = "/"): string {
+  const base = portal.primary_domain ? `https://${portal.primary_domain}` : `https://${buildPortalHost(portal.slug)}`;
+  return `${base}${path.startsWith("/") ? path : `/${path}`}`;
+}

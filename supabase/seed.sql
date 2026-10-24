@@ -28,3 +28,18 @@ insert into knews.portal_domains (portal_id, domain, is_primary) values
   ('10000000-0000-4000-8000-000000000021', 'guaruja.localhost', false),
   ('10000000-0000-4000-8000-000000000022', 'santos.localhost', false)
 on conflict do nothing;
+
+-- Identidade e editorias sinteticas (P3)
+update knews.portals set theme = '{"primary": "#0e7490", "accent": "#f59e0b", "tagline": "Notícias de Guarujá com fonte e correção pública", "logo_text": "Portal 24h Guarujá"}',
+  seo = '{"description": "Notícias de Guarujá e dos bairros, com fontes verificáveis."}'
+where id = '10000000-0000-4000-8000-000000000021';
+update knews.portals set theme = '{"primary": "#1d4ed8", "accent": "#10b981", "tagline": "Santos de ponta a ponta", "logo_text": "Portal 24h Santos"}'
+where id = '10000000-0000-4000-8000-000000000022';
+
+insert into knews.categories (portal_id, name, slug, position)
+select p.id, c.name, c.slug, c.pos
+from knews.portals p
+cross join (values ('Cidade', 'cidade', 10), ('Saúde', 'saude', 20), ('Educação', 'educacao', 30), ('Trânsito', 'transito', 40),
+                   ('Economia', 'economia', 50), ('Cultura', 'cultura', 60), ('Esportes', 'esportes', 70), ('Meio ambiente', 'meio-ambiente', 80)) as c(name, slug, pos)
+where p.id in ('10000000-0000-4000-8000-000000000021', '10000000-0000-4000-8000-000000000022')
+on conflict do nothing;

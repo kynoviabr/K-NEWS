@@ -50,3 +50,15 @@ export function slugify(title: string, suffix: string): string {
     .join("-");
   return `${base || "noticia"}-${suffix}`.slice(0, 120);
 }
+
+// Slug de cadastro (cidade, bairro, editoria, portal): sem sufixo, ate 40 caracteres.
+export function toSlug(name: string): string {
+  return foldText(name)
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .trim()
+    .split(/[\s-]+/)
+    .filter(Boolean)
+    .join("-")
+    .slice(0, 40)
+    .replace(/-+$/, "");
+}

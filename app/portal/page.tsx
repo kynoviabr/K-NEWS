@@ -1,22 +1,26 @@
 import type { Metadata } from "next";
 import { ArticleCard } from "@/components/news/article-card";
 import { AdSlot } from "@/components/advertising/ad-slot";
-import { canonicalUrl } from "@/lib/portal";
-import { listPublished, resolveRequestPortal } from "@/lib/portal-data";
+import { ArticleList, pageFrom } from "@/components/portal/article-list";
+import { portalUrl } from "@/lib/portal";
+import { getSections, resolveRequestPortal, searchArticles } from "@/lib/portal-data";
 
 export const dynamic = "force-dynamic";
+
+type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 export async function generateMetadata(): Promise<Metadata> {
   const portal = await resolveRequestPortal();
   if (!portal) return { title: "Portal 24h" };
+  const seo = portal.seo as { description?: string };
   return {
     title: portal.name,
-    description: `Notícias de ${portal.city ?? portal.name} com fontes e correções públicas.`,
-    alternates: { canonical: canonicalUrl("/portal", portal.slug) },
+    description: seo.description ?? `Notícias de ${portal.city ?? portal.name} com fontes e correções públicas.`,
+    alternates: { canonical: portalUrl(portal, "/portal") },
   };
 }
 
-export default async function PortalPage() {
+export default async function PortalPage({ searchParams }: Props) {
   const portal = await resolveRequestPortal();
   if (!portal) {
     return (
@@ -26,36 +30,28 @@ export default async function PortalPage() {
       </div>
     );
   }
-  const articles = await listPublished(portal.id, 30);
-  const [lead, ...rest] = articles;
+  const page = pageFrom((await searchParams).pagina);
+  const [sections, latest] = await Promise.all([getSections(portal.id), searchArticles(portal.id, { page })]);
+  const names = new Map(sections.categories.map((c) => [c.slug, c.name]));
+  const [lead, ...rest] = page === 1 ? latest.items : [undefined, ...latest.items];
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 p-4 md:p-6 lg:p-8">
-      <header className="border-b pb-4">
-        <p className="text-xs font-semibold uppercase tracking-widest text-[hsl(var(--knews-primary))]">Portal 24h</p>
-        <h1 className="font-heading text-3xl font-bold tracking-tight">{portal.city ?? portal.name}</h1>
-      </header>
-
+    <main className="mx-auto max-w-6xl space-y-8 p-4 md:p-6 lg:p-8">
+      <h1 className="sr-only">{portal.name}: últimas notícias de {portal.city}</h1>
       <AdSlot portalId={portal.id} slotCode="portal-topo" />
 
-      {!lead && <p className="text-sm text-muted-foreground">Ainda não há matérias publicadas.</p>}
+      {latest.total === 0 && <p className="text-sm text-muted-foreground">Ainda não há matérias publicadas.</p>}
       {lead && (
         <section aria-label="Manchete">
-          <ArticleCard slug={lead.slug} title={lead.title} excerpt={lead.excerpt} category={lead.category} publishedAt={lead.published_at} hrefPrefix="/portal/noticia" />
+          <ArticleCard slug={lead.slug} title={lead.title} excerpt={lead.excerpt} category={lead.category ? names.get(lead.category) ?? lead.category : null} publishedAt={lead.published_at} hrefPrefix="/portal/noticia" />
         </section>
       )}
       <AdSlot portalId={portal.id} slotCode="portal-meio" />
       {rest.length > 0 && (
-        <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" aria-label="Últimas notícias">
-          {rest.map((a) => (
-            <ArticleCard key={a.slug} slug={a.slug} title={a.title} excerpt={a.excerpt} category={a.category} publishedAt={a.published_at} hrefPrefix="/portal/noticia" />
-          ))}
+        <section aria-label="Últimas notícias">
+          <ArticleList items={rest.filter((a) => a !== undefined)} total={latest.total} page={page} sections={sections} baseHref="/portal" empty="" />
         </section>
       )}
-
-      <footer className="border-t pt-4 text-xs text-muted-foreground">
-        Toda matéria publicada passou por revisão humana e mostra suas fontes e correções.
-      </footer>
-    </div>
+    </main>
   );
 }

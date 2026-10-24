@@ -16,10 +16,11 @@ export const IDS = {
   articleGuaruja: "00000000-0000-4000-8000-000000000041",
   articleSantos: "00000000-0000-4000-8000-000000000042",
   advertiser: "00000000-0000-4000-8000-000000000051",
+  managerGuaruja: "00000000-0000-4000-8000-000000000036",
 } as const;
 
 export async function seed(client: Client): Promise<void> {
-  const users = [IDS.editorGuaruja, IDS.editorSantos, IDS.commercialGuaruja, IDS.superAdmin, IDS.outsider];
+  const users = [IDS.editorGuaruja, IDS.editorSantos, IDS.commercialGuaruja, IDS.superAdmin, IDS.outsider, IDS.managerGuaruja];
   for (const id of users) {
     await client.query(
       `insert into auth.users (id, instance_id, aud, role, email, created_at, updated_at)
@@ -42,9 +43,9 @@ export async function seed(client: Client): Promise<void> {
   );
   await client.query(
     `insert into knews.portal_members (portal_id, user_id, role) values
-       ($1, $3, 'regional_editor'), ($2, $4, 'regional_editor'), ($1, $5, 'commercial_partner'), ($1, $6, 'super_admin')
+       ($1, $3, 'regional_editor'), ($2, $4, 'regional_editor'), ($1, $5, 'commercial_partner'), ($1, $6, 'super_admin'), ($1, $7, 'regional_manager')
      on conflict do nothing`,
-    [IDS.portalGuaruja, IDS.portalSantos, IDS.editorGuaruja, IDS.editorSantos, IDS.commercialGuaruja, IDS.superAdmin],
+    [IDS.portalGuaruja, IDS.portalSantos, IDS.editorGuaruja, IDS.editorSantos, IDS.commercialGuaruja, IDS.superAdmin, IDS.managerGuaruja],
   );
   await client.query(
     `insert into knews.articles (id, portal_id, slug, title, status) values

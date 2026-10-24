@@ -12,6 +12,14 @@ export function canEdit(m: Membership | null): boolean {
   return !!m && EDITOR_ROLES.has(m.role);
 }
 
+export function canManage(m: Membership | null): boolean {
+  return !!m && (m.role === "super_admin" || m.role === "regional_manager");
+}
+
+export function isSuperAdmin(ctx: AdminContext | null): boolean {
+  return !!ctx?.memberships.some((m) => m.role === "super_admin");
+}
+
 // Area comercial (anuncios, contratos, receitas) e separada da redacao.
 const SALES_ROLES = new Set(["super_admin", "regional_manager", "commercial_partner"]);
 
