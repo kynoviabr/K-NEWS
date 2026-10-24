@@ -46,9 +46,9 @@ Rodam no CI (job `db-integration`) contra um Supabase efêmero, com dados sinté
 
 | Módulo | Classificação |
 |---|---|
-| Fundação (Next.js, auth SSR, middleware, design system, CI) | Implementado com testes simulados (typecheck, lint, build ok) |
+| Fundação (Next.js, auth SSR, middleware, design system, CI) | Concluído e testado em integração real localmente: E2E no navegador contra o build de produção e o Supabase local (portal desktop e celular, login, editorial, isolamento, SEO), também no CI. Sem deploy na Vercel (exige autorização), ver `docs/LAUNCH-CHECKLIST.md` |
 | Schema `knews` + RLS de portais/artigos/anunciantes/parceiros | Concluído e testado em integração real |
-| Jobs duráveis (claim, lease, retry, DLQ) | Testado em integração real, com worker conectado (`rss_fetch`, `draft`); falta criar o agendamento pg_cron no ambiente remoto |
+| Jobs duráveis e operação (claim, lease, retry, DLQ, painel `/automacoes`, health check) | Concluído e testado em integração real no banco local e no navegador: worker conectado, visão da fila, reprocessar e descartar com auditoria, alertas no `/api/internal/health`. Falta criar o agendamento pg_cron e o monitor externo no ambiente remoto (exige autorização) |
 | Ad Management & Revenue Center | Concluído e testado em integração real no banco local e no navegador (cadastro → contrato → campanha → upload → aprovação → ativação → exibição no portal → impressão → clique → pausa), ver `docs/AD-MANAGEMENT.md`. AdSense/MGID: só slots e ads.txt configuráveis, sem conta aprovada nem teste com o provedor |
 | News Intelligence | Fluxo concluído e testado em integração real (fonte → coleta → dedup → rascunho → revisão → publicação → portal → retirada), ver `docs/NEWS-INTELLIGENCE.md`. Cliente DeepSeek/OpenAI implementado só com testes simulados (sem chaves); feeds externos não testados (rede do sandbox) |
 | Portal multirregional | Concluído e testado em integração real no banco local e no navegador: cadastro de regiões, cidades, bairros, portais e domínios, identidade por cidade, editorias, busca, filtros, SEO e sitemap por hostname, isolamento entre portais (ver `docs/PORTAL-MULTIRREGIONAL.md`). Pendente: portal na raiz do domínio e logotipo em imagem |
