@@ -199,6 +199,13 @@ describe("News Intelligence ponta a ponta (Guarujá)", () => {
     const r3 = await service.schema("knews").from("articles").update({ status: "published" }).eq("id", health.id);
     expect(r3.error?.message).toMatch(/revisao humana/);
 
+    // Rascunho sem IA (copia marcada da fonte) nunca publica sem reescrita.
+    const original = (await pg.query<{ body: string }>("select body from knews.articles where id = $1", [health.id])).rows[0]!.body;
+    await pg.query("update knews.articles set body = $2 where id = $1", [health.id, `[Rascunho sem IA — reescrever antes de publicar] ${original}`]);
+    const r5 = await editor.client.schema("knews").rpc("review_article", { p_article_id: health.id, p_decision: "approve", p_note: "Tentativa sem reescrever" });
+    expect(r5.error?.message).toMatch(/reescrito/);
+    await pg.query("update knews.articles set body = $2 where id = $1", [health.id, original]);
+
     const r4 = await santosEditor.client.schema("knews").rpc("review_article", { p_article_id: health.id, p_decision: "approve", p_note: "Invasao de outro portal" });
     expect(r4.error?.message).toMatch(/nao encontrado/);
   });

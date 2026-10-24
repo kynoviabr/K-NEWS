@@ -262,6 +262,10 @@ begin
     if length(trim(new.body)) < 200 then
       raise exception 'texto insuficiente para publicacao' using errcode = 'P0004';
     end if;
+    -- Rascunho sem IA e copia da fonte com marcador: precisa ser reescrito pelo editor.
+    if position('[Rascunho sem IA' in new.body) > 0 then
+      raise exception 'rascunho sem IA precisa ser reescrito antes de publicar' using errcode = 'P0004';
+    end if;
     new.reviewed_by := v_uid;
     new.reviewed_at := now();
     new.published_at := coalesce(new.published_at, now());

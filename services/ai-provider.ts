@@ -27,7 +27,8 @@ export type AiProviderClient = {
 // do banco exige texto minimo de 200 caracteres).
 class MockProvider implements AiProviderClient {
   async draftArticle(input: AiDraftInput): Promise<AiDraftResult> {
-    const body = `Rascunho gerado a partir de ${input.evidences.length} evidencia(s): ${input.claims.join(" ")} — revisao humana obrigatoria para publicacao.`;
+    // Sem contagens no texto: qualquer numero ausente da fonte seria marcado como afirmacao sem respaldo.
+    const body = `[Rascunho sem IA — reescrever antes de publicar] ${input.claims.join(" ")}`;
     return {
       title: input.title,
       body,

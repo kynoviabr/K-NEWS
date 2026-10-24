@@ -72,5 +72,24 @@
 - **Consequências:** Cadastro de nova cidade é só `knews.cities` + `knews.portals` + `knews.portal_domains` + fontes/editorias/ads — sem alteração de código. SEO e inventário publicitário por subdomínio. Requer DNS wildcard e Vercel Domains configurados antes de produção.
 - **Alternativas rejeitadas:** Um domínio por cidade com deploys separados (custo/operacional inviável); path-based `/cidade` (pior SEO local e compartilhamento); reuso de `knews.example.com`.
 
+## ADR-011 — Leitura pública do portal via schema `knews_public`
+
+- **Data:** 2026-10-24 · **Status:** Aceita
+- **Contexto:** o portal é lido por visitantes anônimos, mas `anon` não tem acesso ao schema `knews` (isolamento do BLOGGER). Usar a service role no render público ampliaria o impacto de qualquer falha.
+- **Decisão:** schema `knews_public` exposto ao `anon` contendo apenas funções `SECURITY DEFINER` que devolvem conteúdo publicado (`portal_by_host`, `published_articles`, `published_article`). `knews` continua fechado ao `anon`.
+- **Consequências:** exige adicionar `knews_public` aos schemas expostos da API no projeto remoto quando houver autorização de deploy.
+
+## ADR-012 — Worker da fila em rota interna da aplicação
+
+- **Data:** 2026-10-24 · **Status:** Aceita
+- **Contexto:** o worker usa o mesmo código TypeScript do app (parser, IA, guardas). Reescrever em Deno para a Edge Function duplicaria a lógica.
+- **Decisão:** `POST /api/internal/jobs/run` (CRON_SECRET, comparação em tempo constante) executa `enqueue_due_source_fetches` + `runWorker`. O agendamento continua no Supabase (pg_cron + pg_net), coerente com ADR-006 (sem cron da Vercel). Jobs curtos, lease de 120 s.
+- **Consequências:** a Edge Function `knews-jobs` fica só para health; revisar se o volume exigir execução fora da Vercel.
+
+## ADR-013 — Publicação sempre humana no MVP
+
+- **Data:** 2026-10-24 · **Status:** Aceita
+- **Decisão:** o trigger de publicação exige `auth.uid()`; nenhum processo automático (service_role) publica. Autopublicação só será reavaliada após homologação, com evidências oficiais independentes.
+
 ---
 *Próximas ADRs serão acrescentadas por fase (ex.: escolha de provedor de pesquisa, estratégia de CDN, retenção de logs).*
