@@ -104,7 +104,7 @@ describe("usuario autenticado sem vinculo K-NEWS (Auth compartilhado com BLOGGER
 
   it("nao ve nenhum dado de negocio do K-NEWS", async () => {
     await asActor(db, outsider, async (c) => {
-      for (const table of ["regions", "cities", "neighborhoods", "portals", "portal_domains", "portal_members", "articles", "advertisers", "ad_campaigns", "sources", "jobs", "partners", "partner_territories", "processed_canonicals", "audit_logs"]) {
+      for (const table of ["regions", "cities", "neighborhoods", "portals", "portal_domains", "portal_members", "articles", "advertisers", "ad_campaigns", "sources", "jobs", "partners", "partner_territories", "processed_canonicals", "audit_logs", "source_items", "article_claims", "job_events", "fetch_logs", "ai_costs"]) {
         expect(await count(c, `select 1 from knews.${table}`), table).toBe(0);
       }
     });
