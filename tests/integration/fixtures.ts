@@ -29,7 +29,7 @@ export async function seed(client: Client): Promise<void> {
     );
   }
   await client.query(
-    `insert into knews.regions (id, name, slug) values ($1, 'Baixada Santista', 'baixada-santista') on conflict (id) do nothing`,
+    `insert into knews.regions (id, name, slug) values ($1, 'Baixada Santista (teste)', 'baixada-teste') on conflict (id) do nothing`,
     [IDS.region],
   );
   await client.query(
@@ -37,7 +37,7 @@ export async function seed(client: Client): Promise<void> {
     [IDS.cityGuaruja, IDS.citySantos, IDS.region],
   );
   await client.query(
-    `insert into knews.portals (id, city_id, name, slug) values ($1, $3, 'Portal 24h Guarujá', 'guaruja'), ($2, $4, 'Portal 24h Santos', 'santos') on conflict (id) do nothing`,
+    `insert into knews.portals (id, city_id, name, slug) values ($1, $3, 'Portal 24h Guarujá (teste)', 'guaruja-teste'), ($2, $4, 'Portal 24h Santos (teste)', 'santos-teste') on conflict (id) do nothing`,
     [IDS.portalGuaruja, IDS.portalSantos, IDS.cityGuaruja, IDS.citySantos],
   );
   await client.query(

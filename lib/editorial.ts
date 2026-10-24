@@ -108,8 +108,13 @@ function extractClaims(body: string): string[] {
 
 export type FactCheck = { claim: string; supported: boolean; contradictions: string[]; stale: boolean };
 
+// Sem acentos: \W do JS trata letras acentuadas como separador ("saúde" -> "sa", "de").
+function foldAccents(s: string): string {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
 function keyFacts(s: string): string[] {
-  return s.toLowerCase().split(/\W+/).filter((t) => t.length > 5 && !/^(sobre|atrav|segundo|acordo|durante)$/.test(t));
+  return foldAccents(s).split(/\W+/).filter((t) => t.length > 5 && !/^(sobre|atrav|segundo|acordo|durante)$/.test(t));
 }
 
 function hasPromptInjection(text: string): boolean {
@@ -125,7 +130,7 @@ function isStaleEvidence(evidence: Evidence, claimDate: string | null): boolean 
 }
 
 export function factCheckClaims(claims: string[], evidences: Evidence[]): FactCheck[] {
-  const snippets = evidences.map((e) => ({ text: (e.contentSnippet ?? e.sourceLabel ?? "").toLowerCase(), host: hostOf(e.sourceUrl) ?? "" }));
+  const snippets = evidences.map((e) => ({ text: foldAccents(e.contentSnippet ?? e.sourceLabel ?? ""), host: hostOf(e.sourceUrl) ?? "" }));
   return claims.map((claim) => {
     const claimFacts = keyFacts(claim);
     let supported = false;
