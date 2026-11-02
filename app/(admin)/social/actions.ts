@@ -82,7 +82,7 @@ export async function scheduleSocialPost(_prev: ActionState, fd: FormData): Prom
     .maybeSingle();
   if (!article) return { ok: false, message: "Matéria não encontrada neste portal." };
   const portal = article.portals as unknown as { slug: string; portal_domains: Array<{ domain: string; is_primary: boolean }> };
-  const link = portalUrl({ slug: portal.slug, primary_domain: portal.portal_domains.find((x) => x.is_primary)?.domain }, `/portal/noticia/${article.slug}`);
+  const link = portalUrl({ slug: portal.slug, primary_domain: portal.portal_domains.find((x) => x.is_primary)?.domain }, `/noticia/${article.slug}`);
   const { error } = await knews.from("social_posts").insert(
     d.providers.map((provider) => ({
       portal_id: ctx.active!.portalId,

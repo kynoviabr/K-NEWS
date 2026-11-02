@@ -9,7 +9,8 @@ import { getKnewsSessionClient } from "@/lib/supabase/knews";
 import { NotSignedIn, PortalSwitcher } from "../portal-switcher";
 import { ActionForm } from "../ads/action-form";
 import { CampaignStatusBadge } from "../ads/status-badge";
-import { addDomain, createCategory, createCity, createNeighborhood, createPortal, createRegion, saveIdentity, setPortalStatus } from "./actions";
+import { portalAssetUrl } from "@/lib/portal-assets";
+import { addDomain, createCategory, createCity, createNeighborhood, createPortal, createRegion, removePortalAsset, saveIdentity, savePortalAsset, setPortalStatus } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ type Portal = {
   slug: string;
   status: string;
   city_id: string;
-  theme: { primary?: string; accent?: string; tagline?: string; logo_text?: string };
+  theme: { primary?: string; accent?: string; tagline?: string; logo_text?: string; logo_path?: string; icon_path?: string };
   seo: { description?: string };
   portal_domains: Array<{ domain: string; is_primary: boolean }>;
 };
@@ -104,6 +105,41 @@ export default async function LocalidadesPage() {
                 </ActionForm>
               ) : (
                 <p className="text-sm text-muted-foreground">Somente o gerente regional do portal edita a identidade.</p>
+              )}
+              {canManage(ctx.active) && (
+                <div className="mt-6 grid gap-4 border-t pt-4 sm:grid-cols-2">
+                  {(
+                    [
+                      ["logo", "Logotipo", "PNG, JPEG ou WebP até 512 KB. Aparece no cabeçalho no lugar do nome."],
+                      ["icon", "Ícone (favicon)", "Quadrado, PNG, JPEG ou WebP até 128 KB."],
+                    ] as const
+                  ).map(([kind, label, hint]) => {
+                    const url = portalAssetUrl(active.theme, active.id, kind);
+                    return (
+                      <div key={kind} className="space-y-2">
+                        <p className="text-sm font-medium">{label}</p>
+                        {url ? (
+                          <div className="flex items-center gap-3">
+                            {/* eslint-disable-next-line @next/next/no-img-element -- arquivo publico do Storage do portal */}
+                            <img src={url} alt={`${label} atual`} className={kind === "logo" ? "max-h-12 max-w-48 rounded border bg-white p-1" : "h-8 w-8 rounded border"} />
+                            <form action={removePortalAsset}>
+                              <input type="hidden" name="kind" value={kind} />
+                              <Button type="submit" variant="outline" size="sm" aria-label={`Remover ${label.toLowerCase()}`}>Remover</Button>
+                            </form>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">Nenhum enviado.</p>
+                        )}
+                        <ActionForm action={savePortalAsset} submitLabel={url ? "Trocar" : "Enviar"}>
+                          <input type="hidden" name="kind" value={kind} />
+                          <Label htmlFor={`asset-${kind}`} className="sr-only">{label}</Label>
+                          <Input id={`asset-${kind}`} name="file" type="file" accept="image/png,image/jpeg,image/webp" required />
+                          <p className="text-xs text-muted-foreground">{hint}</p>
+                        </ActionForm>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </CardContent>
           </Card>

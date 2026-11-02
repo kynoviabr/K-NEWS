@@ -7,12 +7,13 @@ type Props = {
   total: number;
   page: number;
   sections: PortalSections;
-  baseHref: string; // ex.: /portal/editoria/saude ou /portal/busca?q=praia
+  base: string; // "" no host da cidade, "/portal" na previa do painel
+  baseHref: string; // ex.: /editoria/saude ou /busca?q=praia, ja com o prefixo
   empty: string;
 };
 
 // Grade de materias com paginacao por link (rastreavel, sem JS).
-export function ArticleList({ items, total, page, sections, baseHref, empty }: Props) {
+export function ArticleList({ items, total, page, sections, base, baseHref, empty }: Props) {
   const names = new Map(sections.categories.map((c) => [c.slug, c.name]));
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const href = (p: number) => `${baseHref}${baseHref.includes("?") ? "&" : "?"}pagina=${p}`;
@@ -28,7 +29,7 @@ export function ArticleList({ items, total, page, sections, baseHref, empty }: P
             excerpt={a.excerpt}
             category={a.category ? names.get(a.category) ?? a.category : null}
             publishedAt={a.published_at}
-            hrefPrefix="/portal/noticia"
+            hrefPrefix={`${base}/noticia`}
           />
         ))}
       </div>

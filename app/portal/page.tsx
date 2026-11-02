@@ -3,7 +3,7 @@ import { ArticleCard } from "@/components/news/article-card";
 import { AdSlot } from "@/components/advertising/ad-slot";
 import { ArticleList, pageFrom } from "@/components/portal/article-list";
 import { portalUrl } from "@/lib/portal";
-import { getSections, resolveRequestPortal, searchArticles } from "@/lib/portal-data";
+import { getSections, portalBase, resolveRequestPortal, searchArticles } from "@/lib/portal-data";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: portal.name,
     description: seo.description ?? `Notícias de ${portal.city ?? portal.name} com fontes e correções públicas.`,
-    alternates: { canonical: portalUrl(portal, "/portal") },
+    alternates: { canonical: portalUrl(portal, "/") },
   };
 }
 
@@ -31,7 +31,7 @@ export default async function PortalPage({ searchParams }: Props) {
     );
   }
   const page = pageFrom((await searchParams).pagina);
-  const [sections, latest] = await Promise.all([getSections(portal.id), searchArticles(portal.id, { page })]);
+  const [sections, latest, base] = await Promise.all([getSections(portal.id), searchArticles(portal.id, { page }), portalBase()]);
   const names = new Map(sections.categories.map((c) => [c.slug, c.name]));
   const [lead, ...rest] = page === 1 ? latest.items : [undefined, ...latest.items];
 
@@ -43,13 +43,13 @@ export default async function PortalPage({ searchParams }: Props) {
       {latest.total === 0 && <p className="text-sm text-muted-foreground">Ainda não há matérias publicadas.</p>}
       {lead && (
         <section aria-label="Manchete">
-          <ArticleCard slug={lead.slug} title={lead.title} excerpt={lead.excerpt} category={lead.category ? names.get(lead.category) ?? lead.category : null} publishedAt={lead.published_at} hrefPrefix="/portal/noticia" />
+          <ArticleCard slug={lead.slug} title={lead.title} excerpt={lead.excerpt} category={lead.category ? names.get(lead.category) ?? lead.category : null} publishedAt={lead.published_at} hrefPrefix={`${base}/noticia`} />
         </section>
       )}
       <AdSlot portalId={portal.id} slotCode="portal-meio" />
       {rest.length > 0 && (
         <section aria-label="Últimas notícias">
-          <ArticleList items={rest.filter((a) => a !== undefined)} total={latest.total} page={page} sections={sections} baseHref="/portal" empty="" />
+          <ArticleList items={rest.filter((a) => a !== undefined)} total={latest.total} page={page} sections={sections} base={base} baseHref={base || "/"} empty="" />
         </section>
       )}
     </main>

@@ -2,6 +2,7 @@ import "server-only";
 import { headers } from "next/headers";
 import { getPortalPublicClient } from "@/lib/supabase/knews";
 import { normalizeHost } from "@/lib/domains";
+import { PORTAL_SURFACE_HEADER } from "@/lib/hosts";
 
 export type PublicPortal = {
   id: string;
@@ -38,6 +39,11 @@ export async function resolveRequestPortal(): Promise<PublicPortal | null> {
   const { data, error } = await db.rpc("portal_by_host", { p_host: lookup });
   if (error) throw new Error(`portal_by_host: ${error.message}`);
   return (data as PublicPortal | null) ?? null;
+}
+
+// Prefixo dos links internos do portal: raiz no host da cidade, /portal na previa do painel.
+export async function portalBase(): Promise<"" | "/portal"> {
+  return (await headers()).get(PORTAL_SURFACE_HEADER) === "portal" ? "" : "/portal";
 }
 
 export async function listPublished(portalId: string, limit = 20): Promise<PublicArticleSummary[]> {

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { portalBasePath } from "@/lib/hosts";
 import { cookies } from "next/headers";
 import { getKnewsServiceClient } from "@/lib/supabase/knews";
 import { resolveRequestPortal } from "@/lib/portal-data";
@@ -14,7 +15,7 @@ const NO_INDEX = { "cache-control": "no-store", "x-robots-tag": "noindex, nofoll
 // Clique nao e venda: a receita entra separadamente, pelo relatorio do parceiro.
 export async function GET(request: Request, { params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
-  const home = new URL("/portal", request.url);
+  const home = new URL(portalBasePath(request.headers.get("host")) || "/", request.url);
   if (!/^[a-z0-9][a-z0-9-]{2,59}$/.test(code)) return NextResponse.redirect(home, { status: 302, headers: NO_INDEX });
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
   if (!checkRateLimit(`ads-link:${ip}`, 60, 60_000).allowed) return new NextResponse("Muitas requisições", { status: 429 });

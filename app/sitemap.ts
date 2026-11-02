@@ -13,11 +13,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     getSections(portal.id).catch(() => ({ categories: [], neighborhoods: [] })),
   ]);
   return [
-    { url: portalUrl(portal, "/portal"), lastModified: new Date(), changeFrequency: "hourly", priority: 1 },
-    ...sections.categories.filter((c) => c.count > 0).map((c) => ({ url: portalUrl(portal, `/portal/editoria/${c.slug}`), changeFrequency: "daily" as const, priority: 0.6 })),
-    ...sections.neighborhoods.filter((n) => n.count > 0).map((n) => ({ url: portalUrl(portal, `/portal/bairro/${n.slug}`), changeFrequency: "daily" as const, priority: 0.5 })),
+    { url: portalUrl(portal, "/"), lastModified: new Date(), changeFrequency: "hourly", priority: 1 },
+    ...sections.categories.filter((c) => c.count > 0).map((c) => ({ url: portalUrl(portal, `/editoria/${c.slug}`), changeFrequency: "daily" as const, priority: 0.6 })),
+    ...sections.neighborhoods.filter((n) => n.count > 0).map((n) => ({ url: portalUrl(portal, `/bairro/${n.slug}`), changeFrequency: "daily" as const, priority: 0.5 })),
     ...articles.map((a) => ({
-      url: portalUrl(portal, `/portal/noticia/${a.slug}`),
+      url: portalUrl(portal, `/noticia/${a.slug}`),
       lastModified: new Date(a.updated_at),
       changeFrequency: "daily" as const,
       priority: 0.8,

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { ArticleList, pageFrom } from "@/components/portal/article-list";
-import { getSections, resolveRequestPortal, searchArticles } from "@/lib/portal-data";
+import { getSections, portalBase, resolveRequestPortal, searchArticles } from "@/lib/portal-data";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +15,7 @@ export default async function BuscaPage({ searchParams }: Props) {
   const sp = await searchParams;
   const q = (Array.isArray(sp.q) ? sp.q[0] : sp.q)?.trim().slice(0, 100) ?? "";
   const page = pageFrom(sp.pagina);
-  const sections = await getSections(portal.id);
+  const [sections, base] = await Promise.all([getSections(portal.id), portalBase()]);
   const result = q.length >= 2 ? await searchArticles(portal.id, { query: q, page }) : { total: 0, items: [] };
   return (
     <main className="mx-auto max-w-6xl space-y-6 p-4 md:p-6 lg:p-8">
@@ -27,7 +27,7 @@ export default async function BuscaPage({ searchParams }: Props) {
           <p className="text-sm text-muted-foreground" role="status">
             {result.total} resultado{result.total === 1 ? "" : "s"} para “{q}” em {portal.name}
           </p>
-          <ArticleList items={result.items} total={result.total} page={page} sections={sections} baseHref={`/portal/busca?q=${encodeURIComponent(q)}`} empty="Nada encontrado. Tente outras palavras." />
+          <ArticleList items={result.items} total={result.total} page={page} sections={sections} base={base} baseHref={`${base}/busca?q=${encodeURIComponent(q)}`} empty="Nada encontrado. Tente outras palavras." />
         </>
       )}
     </main>

@@ -1,7 +1,16 @@
 import Link from "next/link";
 import { ConsentBanner } from "@/components/advertising/consent-banner";
-import { getSections, resolveRequestPortal } from "@/lib/portal-data";
+import { getSections, portalBase, resolveRequestPortal } from "@/lib/portal-data";
 import { themeCssVars } from "@/lib/theme";
+import { portalAssetUrl } from "@/lib/portal-assets";
+import type { Metadata } from "next";
+
+// Favicon do portal da cidade, quando enviado no painel.
+export async function generateMetadata(): Promise<Metadata> {
+  const portal = await resolveRequestPortal();
+  const icon = portal ? portalAssetUrl(portal.theme, portal.id, "icon") : null;
+  return icon ? { icons: { icon, apple: icon } } : {};
+}
 
 // Moldura do portal por hostname: identidade visual da cidade, editorias e busca.
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
@@ -14,8 +23,9 @@ export default async function PortalLayout({ children }: { children: React.React
       </>
     );
   }
-  const sections = await getSections(portal.id);
+  const [sections, base] = await Promise.all([getSections(portal.id), portalBase()]);
   const theme = portal.theme as { tagline?: string; logo_text?: string };
+  const logo = portalAssetUrl(portal.theme, portal.id, "logo");
   const categories = sections.categories.filter((c) => c.count > 0);
 
   return (
@@ -23,12 +33,17 @@ export default async function PortalLayout({ children }: { children: React.React
       <header className="border-b bg-card">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-4 md:flex-row md:items-center md:justify-between md:px-6">
           <div>
-            <Link href="/portal" className="font-heading text-2xl font-bold tracking-tight text-[hsl(var(--knews-primary))]">
-              {theme.logo_text || portal.name}
+            <Link href={base || "/"} className="font-heading text-2xl font-bold tracking-tight text-[hsl(var(--knews-primary))]">
+              {logo ? (
+                // eslint-disable-next-line @next/next/no-img-element -- arquivo publico do Storage, tamanho controlado no envio
+                <img src={logo} alt={theme.logo_text || portal.name} className="h-10 w-auto max-w-[240px] object-contain" />
+              ) : (
+                theme.logo_text || portal.name
+              )}
             </Link>
             {theme.tagline && <p className="text-sm text-muted-foreground">{theme.tagline}</p>}
           </div>
-          <form action="/portal/busca" method="get" role="search" className="flex gap-2">
+          <form action={`${base}/busca`} method="get" role="search" className="flex gap-2">
             <label htmlFor="portal-q" className="sr-only">Buscar notícias</label>
             <input
               id="portal-q"
@@ -47,7 +62,7 @@ export default async function PortalLayout({ children }: { children: React.React
             <ul className="flex gap-4 whitespace-nowrap text-sm font-medium">
               {categories.map((c) => (
                 <li key={c.slug}>
-                  <Link href={`/portal/editoria/${c.slug}`} className="hover:text-[hsl(var(--knews-primary))] hover:underline">{c.name}</Link>
+                  <Link href={`${base}/editoria/${c.slug}`} className="hover:text-[hsl(var(--knews-primary))] hover:underline">{c.name}</Link>
                 </li>
               ))}
             </ul>
@@ -65,7 +80,7 @@ export default async function PortalLayout({ children }: { children: React.React
               .map((n, i) => (
                 <span key={n.slug}>
                   {i > 0 && " · "}
-                  <Link href={`/portal/bairro/${n.slug}`} className="hover:underline">{n.name}</Link>
+                  <Link href={`${base}/bairro/${n.slug}`} className="hover:underline">{n.name}</Link>
                 </span>
               ))}
           </p>

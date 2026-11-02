@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ArticleList, pageFrom } from "@/components/portal/article-list";
 import { portalUrl } from "@/lib/portal";
-import { getSections, resolveRequestPortal, searchArticles } from "@/lib/portal-data";
+import { getSections, portalBase, resolveRequestPortal, searchArticles } from "@/lib/portal-data";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: `${found.area.name}, ${found.portal.city} — ${found.portal.name}`,
     description: `Notícias do bairro ${found.area.name}, em ${found.portal.city}.`,
-    alternates: { canonical: portalUrl(found.portal, `/portal/bairro/${found.area.slug}`) },
+    alternates: { canonical: portalUrl(found.portal, `/bairro/${found.area.slug}`) },
   };
 }
 
@@ -31,10 +31,11 @@ export default async function BairroPage({ params, searchParams }: Props) {
   if (!found) notFound();
   const page = pageFrom((await searchParams).pagina);
   const result = await searchArticles(found.portal.id, { neighborhood: found.area.slug, page });
+  const base = await portalBase();
   return (
     <main className="mx-auto max-w-6xl space-y-6 p-4 md:p-6 lg:p-8">
       <h1 className="font-heading text-3xl font-bold tracking-tight">{found.area.name}</h1>
-      <ArticleList items={result.items} total={result.total} page={page} sections={found.sections} baseHref={`/portal/bairro/${found.area.slug}`} empty="Nenhuma matéria publicada sobre este bairro." />
+      <ArticleList items={result.items} total={result.total} page={page} sections={found.sections} base={base} baseHref={`${base}/bairro/${found.area.slug}`} empty="Nenhuma matéria publicada sobre este bairro." />
     </main>
   );
 }

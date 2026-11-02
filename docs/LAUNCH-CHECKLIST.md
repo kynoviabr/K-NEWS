@@ -4,7 +4,7 @@
 
 ## 1. Já verificado localmente
 
-- [x] 19 migrations aplicam do zero (`supabase db reset --local`) e no CI (job `db-integration`).
+- [x] 20 migrations aplicam do zero (`supabase db reset --local`) e no CI (job `db-integration`).
 - [x] Isolamento K-NEWS × BLOGGER, RLS entre Guarujá e Santos, fila, ad server, editorial, social, parceiros e operação: testes de integração em Postgres real (`npm run test:integration`).
 - [x] E2E no navegador contra o build de produção (`npm run test:e2e`, job `e2e` no CI): portal por hostname em desktop e celular, consentimento, anúncio dinâmico, SEO (canonical, sitemap, robots, ads.txt), aprovação e retirada de matéria, bloqueio do painel sem login, isolamento de portal e parceiro, health check.
 - [x] Cabeçalhos de segurança (nosniff, frame-ancestors, Referrer-Policy, Permissions-Policy, HSTS) e `noindex` fora do portal (`next.config.ts`).
@@ -14,7 +14,7 @@
 ## 2. Supabase compartilhado **[autorização]**
 
 - [ ] Backup ou PITR confirmado antes de qualquer migration.
-- [ ] Revisão das 19 migrations `knews_*`: só criam objetos no schema `knews`/`knews_public`, buckets `knews-*` e funções próprias. Conferir com `supabase db diff` que nada do BLOGGER (schema `public`, RLS, triggers) muda.
+- [ ] Revisão das 20 migrations `knews_*`: só criam objetos no schema `knews`/`knews_public`, buckets `knews-*` (`knews-creative` privado, `knews-portal-assets` público só para logotipo e favicon) e funções próprias. Conferir com `supabase db diff` que nada do BLOGGER (schema `public`, RLS, triggers) muda.
 - [ ] `supabase db push` no projeto compartilhado, em janela combinada.
 - [ ] Expor `knews` e `knews_public` na API (Settings → API → Exposed schemas), mantendo os schemas do BLOGGER.
 - [ ] Agendamento pg_cron + pg_net chamando `POST /api/internal/jobs/run` a cada minuto com `Authorization: Bearer <CRON_SECRET>` (ADR-006). O segredo fica no Vault do projeto com nome `knews_cron_secret`, sem tocar segredos do BLOGGER.
@@ -27,6 +27,7 @@ Variáveis por ambiente (Preview e Production separados; nenhuma com prefixo `NE
 | Variável | Observação |
 |---|---|
 | `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Públicas |
+| `KNEWS_PANEL_HOSTS` | Host(s) do painel, ex.: `painel.portal24h.news`; todo outro host é portal |
 | `SUPABASE_SERVICE_ROLE_KEY` | Só servidor; nunca em Preview aberto |
 | `CRON_SECRET` | Aleatório, 32+ bytes; o mesmo no Vault do Supabase |
 | `KNEWS_VISITOR_SALT` | Aleatório; trocar invalida contagem de frequência dos anúncios |
@@ -41,7 +42,7 @@ Variáveis por ambiente (Preview e Production separados; nenhuma com prefixo `NE
 
 ## 4. Domínios e DNS **[autorização]**
 
-- [ ] Domínio do painel separado do portal (ex.: `painel.portal24h.news`). Hoje o portal responde em `/portal` do mesmo host; levar o portal para a raiz do domínio da cidade ainda está pendente (ver `docs/PORTAL-MULTIRREGIONAL.md`).
+- [ ] Domínio do painel separado do portal (ex.: `painel.portal24h.news`) e listado em `KNEWS_PANEL_HOSTS`. O portal responde na raiz do domínio da cidade; o painel não abre nesses hosts (ADR-018).
 - [ ] `guaruja.portal24h.news` cadastrado em `knews.portal_domains` e no projeto Vercel; certificado emitido.
 - [ ] Nenhuma alteração de DNS sem autorização.
 

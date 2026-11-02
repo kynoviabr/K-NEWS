@@ -6,6 +6,7 @@ import { canEdit, canManage, getAdminContext, isSuperAdmin } from "@/lib/admin-c
 import { getKnewsSessionClient } from "@/lib/supabase/knews";
 import { toSlug } from "@/lib/news-intelligence/fingerprint";
 import { themeProblems } from "@/lib/theme";
+import { PORTAL_ASSETS_BUCKET, assetProblem, isPortalAssetPath, newAssetPath, sniffImageType, type AssetKind } from "@/lib/portal-assets";
 import type { ActionState } from "../ads/actions";
 
 // Cadastro multirregional. Autorizacao real: RLS, privilegios por coluna e
@@ -103,11 +104,72 @@ export async function saveIdentity(_prev: ActionState, fd: FormData): Promise<Ac
   const portalName = z.string().trim().min(3).max(80).safeParse(fd.get("name"));
   if (!portalName.success) return { ok: false, message: "Nome do portal muito curto." };
   const { knews } = await getKnewsSessionClient();
+  // Logotipo e icone sao enviados a parte; preserva o que ja esta no tema.
+  const current = await currentTheme(knews, ctx.active.portalId);
+  for (const kind of ["logo", "icon"] as const) {
+    const path = current[`${kind}_path`];
+    if (isPortalAssetPath(path, ctx.active.portalId, kind)) theme[`${kind}_path`] = path;
+  }
   const { error, count } = await knews.from("portals").update({ name: portalName.data, theme, seo }, { count: "exact" }).eq("id", ctx.active.portalId);
   if (error) return { ok: false, message: dbMessage(error.message) };
   if (!count) return { ok: false, message: "Sem permissão para editar este portal." };
   revalidatePath("/portal", "layout");
   return done("Identidade salva: já vale para o portal público.");
+}
+
+type KnewsClient = Awaited<ReturnType<typeof getKnewsSessionClient>>["knews"];
+
+async function currentTheme(knews: KnewsClient, portalId: string): Promise<Record<string, unknown>> {
+  const { data } = await knews.from("portals").select("theme").eq("id", portalId).maybeSingle();
+  return ((data as { theme?: Record<string, unknown> } | null)?.theme ?? {}) as Record<string, unknown>;
+}
+
+const assetKind = (raw: FormDataEntryValue | null): AssetKind | null => (raw === "logo" || raw === "icon" ? raw : null);
+
+// Logotipo (cabecalho) e icone (favicon) do portal: Storage publico, caminho por portal,
+// escrita so pela gestao (politica do bucket). O arquivo anterior e apagado depois da troca.
+export async function savePortalAsset(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const ctx = await getAdminContext();
+  if (!ctx?.active || !canManage(ctx.active)) return { ok: false, message: "Somente o gerente regional do portal troca o logotipo." };
+  const kind = assetKind(fd.get("kind"));
+  const file = fd.get("file");
+  if (!kind || !(file instanceof File)) return { ok: false, message: "Escolha um arquivo de imagem" };
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const type = sniffImageType(bytes);
+  const problem = assetProblem(kind, file.size, type);
+  if (problem || !type) return { ok: false, message: problem ?? "Formato aceito: PNG, JPEG ou WebP" };
+
+  const portalId = ctx.active.portalId;
+  const { client, knews } = await getKnewsSessionClient();
+  const path = newAssetPath(portalId, kind, type);
+  const up = await client.storage.from(PORTAL_ASSETS_BUCKET).upload(path, bytes, { contentType: type, upsert: false, cacheControl: "31536000" });
+  if (up.error) return { ok: false, message: dbMessage(up.error.message) };
+  const theme = await currentTheme(knews, portalId);
+  const previous = theme[`${kind}_path`];
+  const { error, count } = await knews.from("portals").update({ theme: { ...theme, [`${kind}_path`]: path } }, { count: "exact" }).eq("id", portalId);
+  if (error || !count) {
+    await client.storage.from(PORTAL_ASSETS_BUCKET).remove([path]);
+    return { ok: false, message: error ? dbMessage(error.message) : "Sem permissão para editar este portal." };
+  }
+  if (isPortalAssetPath(previous, portalId, kind)) await client.storage.from(PORTAL_ASSETS_BUCKET).remove([previous]);
+  revalidatePath("/portal", "layout");
+  return done(kind === "logo" ? "Logotipo atualizado no portal." : "Ícone atualizado no portal.");
+}
+
+export async function removePortalAsset(fd: FormData): Promise<void> {
+  const ctx = await getAdminContext();
+  const kind = assetKind(fd.get("kind"));
+  if (!ctx?.active || !canManage(ctx.active) || !kind) return;
+  const portalId = ctx.active.portalId;
+  const { client, knews } = await getKnewsSessionClient();
+  const theme = await currentTheme(knews, portalId);
+  const previous = theme[`${kind}_path`];
+  const { [`${kind}_path`]: _removed, ...rest } = theme;
+  const { error, count } = await knews.from("portals").update({ theme: rest }, { count: "exact" }).eq("id", portalId);
+  if (error || !count) return;
+  if (isPortalAssetPath(previous, portalId, kind)) await client.storage.from(PORTAL_ASSETS_BUCKET).remove([previous]);
+  revalidatePath("/portal", "layout");
+  revalidatePath("/localidades");
 }
 
 export async function createCategory(_prev: ActionState, fd: FormData): Promise<ActionState> {

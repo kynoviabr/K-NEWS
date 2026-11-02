@@ -25,6 +25,7 @@ export default async function globalSetup(): Promise<void> {
     await pg.query("delete from knews.advertisers where name like 'E2E %'");
     await pg.query("delete from knews.articles where slug like 'e2e-%'");
     await pg.query("delete from knews.portal_members where user_id = any($1)", [Object.values(ids)]);
+    await pg.query("update knews.portals set theme = theme - 'logo_path' - 'icon_path' where id = any($1)", [[portals.guaruja, portals.santos]]);
 
     await pg.query(
       `insert into knews.portal_members (portal_id, user_id, role) values
