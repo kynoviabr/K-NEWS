@@ -58,9 +58,11 @@ export default async function NoticiaPage({ params }: Params) {
         </p>
       </header>
 
-      <AdSlot slotId="in-article-top" fallbackLabel="Publicidade" className="flex min-h-[120px] items-center justify-center rounded-lg border border-dashed bg-muted/50 px-4 py-8 text-center" />
+      <AdSlot portalId={portal.id} slotCode="artigo-topo" category={article.category} neighborhood={article.neighborhood} />
 
       <div className="space-y-4 whitespace-pre-line text-base leading-relaxed">{article.body}</div>
+
+      <AdSlot portalId={portal.id} slotCode="artigo-rodape" category={article.category} neighborhood={article.neighborhood} />
 
       <section className="rounded-lg border p-4" aria-labelledby="fontes">
         <h2 id="fontes" className="font-heading text-lg font-semibold">Fontes</h2>

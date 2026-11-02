@@ -1,3 +1,0 @@
-# ads.txt — K-NEWS
-# Placeholder — AdSense/MGID somente apos aprovacao do provedor
-# Exemplo (nao ativo): google.com, pub-0000000000000000, DIRECT, f08c47fec0942fa0

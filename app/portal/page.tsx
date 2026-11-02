@@ -36,7 +36,7 @@ export default async function PortalPage() {
         <h1 className="font-heading text-3xl font-bold tracking-tight">{portal.city ?? portal.name}</h1>
       </header>
 
-      <AdSlot slotId="portal-topo" fallbackLabel="Publicidade" />
+      <AdSlot portalId={portal.id} slotCode="portal-topo" />
 
       {!lead && <p className="text-sm text-muted-foreground">Ainda não há matérias publicadas.</p>}
       {lead && (
@@ -44,6 +44,7 @@ export default async function PortalPage() {
           <ArticleCard slug={lead.slug} title={lead.title} excerpt={lead.excerpt} category={lead.category} publishedAt={lead.published_at} hrefPrefix="/portal/noticia" />
         </section>
       )}
+      <AdSlot portalId={portal.id} slotCode="portal-meio" />
       {rest.length > 0 && (
         <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" aria-label="Últimas notícias">
           {rest.map((a) => (

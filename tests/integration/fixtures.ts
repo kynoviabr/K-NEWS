@@ -56,3 +56,55 @@ export async function seed(client: Client): Promise<void> {
     IDS.advertiser,
   ]);
 }
+
+export type CampaignSpec = {
+  id: string;
+  portalId?: string;
+  slots: string[];
+  kind?: "direct" | "house";
+  status?: "active" | "draft";
+  impressionsCap?: number | null;
+  priority?: number;
+  extra?: Record<string, unknown>;
+  creativeUrl?: string;
+};
+
+// Cria campanha pelo caminho real: contrato assinado -> rascunho -> slots e criativo
+// aprovado -> ativacao (a guarda do banco recusa qualquer atalho).
+export async function createCampaign(client: Client, spec: CampaignSpec): Promise<void> {
+  const portalId = spec.portalId ?? IDS.portalGuaruja;
+  const kind = spec.kind ?? "direct";
+  let contractId: string | null = null;
+  if (kind === "direct") {
+    const contract = await client.query<{ id: string }>(
+      `insert into knews.ad_contracts (advertiser_id, portal_id, reference, status, starts_on, ends_on, total_value_cents, signed_at)
+       values ($1, $2, $3, 'signed', current_date - 30, current_date + 60, 100000, now()) returning id`,
+      [IDS.advertiser, portalId, `CT-${spec.id.slice(-6)}`],
+    );
+    contractId = contract.rows[0]!.id;
+  }
+  const extra = spec.extra ?? {};
+  const cols = Object.keys(extra);
+  await client.query(
+    `insert into knews.ad_campaigns (id, advertiser_id, portal_id, contract_id, kind, name, status, starts_at, ends_at, impressions_cap, priority${cols.map((c) => `, ${c}`).join("")})
+     values ($1, $2, $3, $4, $5, $6, 'draft', now() - interval '1 day', now() + interval '20 days', $7, $8${cols.map((_, i) => `, $${i + 9}`).join("")})`,
+    [spec.id, IDS.advertiser, portalId, contractId, kind, `Campanha ${spec.id.slice(-4)}`, spec.impressionsCap ?? null, spec.priority ?? 100, ...cols.map((c) => extra[c])],
+  );
+  for (const slot of spec.slots) {
+    await client.query("insert into knews.ad_campaign_placements (campaign_id, slot_code) values ($1, $2)", [spec.id, slot]);
+  }
+  await client.query(
+    `insert into knews.ad_creatives (campaign_id, format, headline, body_text, click_url, status) values ($1, 'text', $2, 'Oferta sintetica', $3, 'approved')`,
+    [spec.id, `Anuncio ${spec.id.slice(-4)}`, spec.creativeUrl ?? "https://anunciante.example/oferta"],
+  );
+  if ((spec.status ?? "active") === "active") {
+    await client.query("update knews.ad_campaigns set status = 'active' where id = $1", [spec.id]);
+  }
+}
+
+export async function deleteCampaigns(client: Client, ids: string[]): Promise<void> {
+  const res = await client.query<{ contract_id: string | null }>("delete from knews.ad_campaigns where id = any($1) returning contract_id", [ids]);
+  const contracts = res.rows.map((r) => r.contract_id).filter(Boolean);
+  if (contracts.length) await client.query("delete from knews.ad_contracts where id = any($1)", [contracts]);
+  await client.query("delete from knews.audit_logs where target_type = 'ad_campaign' and target_id = any($1)", [ids]);
+}

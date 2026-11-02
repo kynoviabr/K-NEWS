@@ -49,7 +49,7 @@ Rodam no CI (job `db-integration`) contra um Supabase efêmero, com dados sinté
 | Fundação (Next.js, auth SSR, middleware, design system, CI) | Implementado com testes simulados (typecheck, lint, build ok) |
 | Schema `knews` + RLS de portais/artigos/anunciantes/parceiros | Concluído e testado em integração real |
 | Jobs duráveis (claim, lease, retry, DLQ) | Testado em integração real, com worker conectado (`rss_fetch`, `draft`); falta criar o agendamento pg_cron no ambiente remoto |
-| Reserva de anúncio (`reserve_ad`) | SQL testado em integração real sob concorrência; rota de decisão (`/api/ads/decision`) ainda consulta o schema `public` e não funciona |
+| Ad Management & Revenue Center | Concluído e testado em integração real no banco local e no navegador (cadastro → contrato → campanha → upload → aprovação → ativação → exibição no portal → impressão → clique → pausa), ver `docs/AD-MANAGEMENT.md`. AdSense/MGID: só slots e ads.txt configuráveis, sem conta aprovada nem teste com o provedor |
 | News Intelligence | Fluxo concluído e testado em integração real (fonte → coleta → dedup → rascunho → revisão → publicação → portal → retirada), ver `docs/NEWS-INTELLIGENCE.md`. Cliente DeepSeek/OpenAI implementado só com testes simulados (sem chaves); feeds externos não testados (rede do sandbox) |
 | Portal público | Lê matérias publicadas do banco por hostname, com fontes, correções, JSON-LD e sitemap por portal; busca, editorias e identidade visual por cidade pendentes |
 | Social (Meta) e parceiros | Tabelas criadas; sem integração nem CRUD |

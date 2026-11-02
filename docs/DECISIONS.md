@@ -91,5 +91,13 @@
 - **Data:** 2026-10-24 · **Status:** Aceita
 - **Decisão:** o trigger de publicação exige `auth.uid()`; nenhum processo automático (service_role) publica. Autopublicação só será reavaliada após homologação, com evidências oficiais independentes.
 
+## ADR-014 — Motor de anúncios no banco, servido no render do portal
+
+- **Data:** 2026-10-24 · **Status:** Aceita
+- **Contexto:** a decisão de anúncio em TypeScript (`lib/ad-inventory.ts`) não tinha trava nem contabilidade, e a rota `/api/ads/decision` lia o schema errado. Inventário vendido precisa de garantia transacional contra excesso de entrega.
+- **Decisão:** `knews.serve_ad` (service_role) decide e reserva numa única transação, com `FOR UPDATE` na campanha e rechecagem do cap. O portal chama o motor no servidor para cada slot; o HTML guarda só um token opaco. Impressão confirmada por beacon de visibilidade (50% por 1 s); clique por redirecionador que conta uma vez. Ordem de preenchimento: campanha paga → provedor programático aprovado (AdSense/MGID) → campanha da casa. Área comercial separada da redação (`can_sell_portal`: super_admin, regional_manager, commercial_partner). Identificador de visitante só com consentimento e gravado como hash com sal do servidor.
+- **Consequências:** páginas do portal ficam dinâmicas (já eram, por hostname). `lib/ad-inventory.ts`/`lib/ad-eligibility.ts` ficam como referência de regras em memória; a fonte da verdade é o banco. Exige `KNEWS_VISITOR_SALT` em produção.
+- **Alternativas rejeitadas:** decisão no cliente via API pública (permitiria esgotar inventário com chamadas forjadas); Redis para contadores (serviço novo sem aprovação).
+
 ---
 *Próximas ADRs serão acrescentadas por fase (ex.: escolha de provedor de pesquisa, estratégia de CDN, retenção de logs).*
