@@ -20,6 +20,11 @@ export function isSuperAdmin(ctx: AdminContext | null): boolean {
   return !!ctx?.memberships.some((m) => m.role === "super_admin");
 }
 
+// Operacao da automacao (fila, reprocessamento): rede ou operador tecnico.
+export function canOperate(ctx: AdminContext | null): boolean {
+  return !!ctx?.memberships.some((m) => m.role === "super_admin" || m.role === "technical_operator");
+}
+
 // Area comercial (anuncios, contratos, receitas) e separada da redacao.
 const SALES_ROLES = new Set(["super_admin", "regional_manager", "commercial_partner"]);
 

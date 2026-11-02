@@ -17,5 +17,4 @@ export const navigationItems: NavigationItem[] = [
   { title: "Comercial", href: "/comercial", icon: "BarChart3" },
   { title: "Parceiros", href: "/parceiros", icon: "Users" },
   { title: "Automações", href: "/automacoes", icon: "Workflow" },
-  { title: "Analytics", href: "/analytics", icon: "LineChart" },
 ];

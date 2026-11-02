@@ -115,5 +115,13 @@
 - **Consequências:** parceiro vê todo o comercial dos portais do território (por isso a exclusividade). Uma conta não acumula papel interno e de parceiro.
 - **Alternativas rejeitadas:** checar o território em cada política (exigiria reescrever todas as políticas comerciais e o contexto do painel); cálculo de comissão na tela (sem histórico nem aprovação).
 
+## ADR-017 — Operação da fila pelo painel e health check autenticado
+
+- **Data:** 2026-10-24 · **Status:** Aceita
+- **Contexto:** a fila durável precisa de alguém que veja atraso e dead-letter e possa reprocessar sem SQL manual no projeto compartilhado. Um monitor externo precisa de um sinal único de saúde sem expor dados internos.
+- **Decisão:** `knews.ops_overview()` (só `super_admin`, `technical_operator` e service role) resume fila, leases vencidos, dead-letter, fontes falhando e pendências sociais; `requeue_job` e `cancel_job` deixam `job_events` e `audit_logs`. `/api/internal/health` exige `CRON_SECRET` e responde 503 com os alertas. Auditoria sem portal só para `super_admin`; inserir auditoria só pelo servidor.
+- **Consequências:** o monitor externo ainda precisa ser escolhido e aprovado. Operador técnico vê a fila de todos os portais pelo resumo, mas só reprocessa por id.
+- **Alternativas rejeitadas:** painel do Supabase para operar a fila (dá acesso ao BLOGGER); serviço de observabilidade novo (sem aprovação).
+
 ---
 *Próximas ADRs serão acrescentadas por fase (ex.: escolha de provedor de pesquisa, estratégia de CDN, retenção de logs).*

@@ -4,6 +4,8 @@ import { AppShell } from "@/components/layout/app-shell";
 import { siteConfig } from "@/config/site";
 
 export const metadata: Metadata = {
+  // Base das URLs absolutas de Open Graph; as paginas do portal sobrescrevem com o dominio da cidade.
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || siteConfig.links.portal),
   title: siteConfig.title,
   description: siteConfig.description,
 };
