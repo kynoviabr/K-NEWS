@@ -16,8 +16,21 @@ const idSchema = z.string().uuid();
 export async function saveDraft(_prev: ReviewState, formData: FormData): Promise<ReviewState> {
   const id = idSchema.safeParse(formData.get("id"));
   const parsed = z
-    .object({ title: z.string().trim().min(10).max(200), excerpt: z.string().trim().max(300), body: z.string().trim().min(1).max(50_000) })
-    .safeParse({ title: formData.get("title"), excerpt: formData.get("excerpt") ?? "", body: formData.get("body") });
+    .object({
+      title: z.string().trim().min(10).max(200),
+      excerpt: z.string().trim().max(300),
+      body: z.string().trim().min(1).max(50_000),
+      // A guarda do banco confere que editoria e bairro sao do portal da materia.
+      category: z.string().regex(/^[a-z0-9-]{0,41}$/).transform((v) => v || null),
+      neighborhood_id: z.union([z.uuid(), z.literal("")]).transform((v) => v || null),
+    })
+    .safeParse({
+      title: formData.get("title"),
+      excerpt: formData.get("excerpt") ?? "",
+      body: formData.get("body"),
+      category: formData.get("category") ?? "",
+      neighborhood_id: formData.get("neighborhood_id") ?? "",
+    });
   if (!id.success || !parsed.success) return { ok: false, message: "Titulo (min. 10) e texto sao obrigatorios." };
   const { knews } = await getKnewsSessionClient();
   const { error, count } = await knews.from("articles").update(parsed.data, { count: "exact" }).eq("id", id.data).neq("status", "published");

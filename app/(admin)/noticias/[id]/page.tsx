@@ -30,6 +30,11 @@ export default async function ArticleReviewPage({ params }: { params: Promise<{ 
     knews.from("editorial_decisions").select("risk_level, blocked_reasons, decided_by, decided_at").eq("article_id", id).order("decided_at", { ascending: false }),
     article.source_item_id ? knews.from("source_items").select("title, summary, url").eq("id", article.source_item_id).maybeSingle() : Promise.resolve({ data: null }),
   ]);
+  const { data: portalRow } = await knews.from("portals").select("city_id").eq("id", article.portal_id).maybeSingle();
+  const [{ data: categories }, { data: neighborhoods }] = await Promise.all([
+    knews.from("categories").select("slug, name").eq("portal_id", article.portal_id).order("position"),
+    portalRow ? knews.from("neighborhoods").select("id, name").eq("city_id", portalRow.city_id).order("name") : Promise.resolve({ data: [] }),
+  ]);
   const member = ctx.memberships.find((m) => m.portalId === article.portal_id) ?? null;
   const editable = canEdit(member);
   const autoDecision = (decisions ?? []).find((d: { decided_by: string | null }) => !d.decided_by);
@@ -63,7 +68,7 @@ export default async function ArticleReviewPage({ params }: { params: Promise<{ 
             <CardHeader><CardTitle>Texto</CardTitle></CardHeader>
             <CardContent>
               {editable && article.status !== "published" ? (
-                <EditForm article={article} />
+                <EditForm article={article} categories={categories ?? []} neighborhoods={neighborhoods ?? []} />
               ) : (
                 <div className="space-y-2 whitespace-pre-wrap text-sm leading-relaxed">{article.body}</div>
               )}

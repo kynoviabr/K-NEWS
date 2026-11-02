@@ -51,7 +51,7 @@ Rodam no CI (job `db-integration`) contra um Supabase efêmero, com dados sinté
 | Jobs duráveis (claim, lease, retry, DLQ) | Testado em integração real, com worker conectado (`rss_fetch`, `draft`); falta criar o agendamento pg_cron no ambiente remoto |
 | Ad Management & Revenue Center | Concluído e testado em integração real no banco local e no navegador (cadastro → contrato → campanha → upload → aprovação → ativação → exibição no portal → impressão → clique → pausa), ver `docs/AD-MANAGEMENT.md`. AdSense/MGID: só slots e ads.txt configuráveis, sem conta aprovada nem teste com o provedor |
 | News Intelligence | Fluxo concluído e testado em integração real (fonte → coleta → dedup → rascunho → revisão → publicação → portal → retirada), ver `docs/NEWS-INTELLIGENCE.md`. Cliente DeepSeek/OpenAI implementado só com testes simulados (sem chaves); feeds externos não testados (rede do sandbox) |
-| Portal público | Lê matérias publicadas do banco por hostname, com fontes, correções, JSON-LD e sitemap por portal; busca, editorias e identidade visual por cidade pendentes |
+| Portal multirregional | Concluído e testado em integração real no banco local e no navegador: cadastro de regiões, cidades, bairros, portais e domínios, identidade por cidade, editorias, busca, filtros, SEO e sitemap por hostname, isolamento entre portais (ver `docs/PORTAL-MULTIRREGIONAL.md`). Pendente: portal na raiz do domínio e logotipo em imagem |
 | Social (Meta) e parceiros | Tabelas criadas; sem integração nem CRUD |
 
 `docs/STAGING.md` (dos commits recuperados) descrevia "12 migrations com validação completa", mas duas delas não aplicavam; a contagem atual é 13 e a validação real é a descrita aqui.

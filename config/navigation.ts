@@ -9,7 +9,6 @@ export const navigationItems: NavigationItem[] = [
   { title: "Visão Geral", href: "/", icon: "LayoutDashboard", description: "KPIs e atividade" },
   { title: "Notícias", href: "/noticias", icon: "FileText" },
   { title: "Fontes", href: "/fontes", icon: "Globe" },
-  { title: "Editorias", href: "/editorias", icon: "Layers" },
   { title: "Localidades", href: "/localidades", icon: "MapPin" },
   { title: "Redes Sociais", href: "/social", icon: "Share2" },
   { title: "Ad Management", href: "/ads", icon: "BadgeDollarSign" },
