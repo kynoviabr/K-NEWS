@@ -3,17 +3,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 export default function NoticiasPage() {
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-heading text-2xl font-bold tracking-tight">Notícias</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Gestão editorial — artigos, evidências e publicação.</p>
-      </div>
+      <h1 className="font-heading text-2xl font-bold tracking-tight">Noticias</h1>
       <Card>
         <CardHeader>
-          <CardTitle>Em construção</CardTitle>
-          <CardDescription>Fase 3 — News Intelligence. Artigos com evidências rastreáveis e guardrails editoriais.</CardDescription>
+          <CardTitle>CRUD de noticias</CardTitle>
+          <CardDescription>Rascunho, revisao, agendamento, publicacao, retirada e correcoes com historico de versoes.</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">Nenhuma notícia cadastrada. Conecte um portal e fontes na Fase 3.</p>
+          <p className="text-sm text-muted-foreground">knews.articles + article_versions + article_corrections + editorial_decisions. Fluxo validado por riskLevel e evidencias.</p>
         </CardContent>
       </Card>
     </div>

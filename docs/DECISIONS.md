@@ -64,5 +64,13 @@
 - **Consequências:** sem colisão de agendamento; observabilidade isolada
 - **Rejeitada:** reusar o mesmo job `pg_cron` com `OR` em `job_type`
 
+## ADR-011 — Domínio principal portal24h.news e multidomínio por subdomínio
+
+- **Data:** 2026-10-23 · **Status:** Aceita
+- **Contexto:** Rede precisa operar N portais municipais sem republicar código, com SEO/sitemap/ads isolados por cidade e administração central sem deploy.
+- **Decisão:** Domínio principal `portal24h.news`, portais em `*.portal24h.news` (`guaruja.portal24h.news`, `santos.portal24h.news` etc.). Mesma aplicação Next.js com resolução dinâmica por `host` via `lib/domains.ts` (`extractCitySlugFromHost`, `buildPortalHost`, `isPortal24hHost`) e `lib/portal.ts` (`resolvePortalFromHost` + fallback `*.portal24h.news` + `canonicalUrl(citySlug)`). `middleware.ts` expõe `x-knews-city`/`x-knews-host`; `app/portal/page.tsx` e `app/portal/noticia/[slug]/page.tsx` consomem `headers()`; `app/sitemap.ts` e `app/robots.ts` são por-host. Vercel com wildcard `*.portal24h.news` (CNAME `*.portal24h.news` → `cname.vercel-dns.com`) — preparação sem publicar DNS sem autorização. Dados/permissões isolados por `portal_id`/`city_id` em `knews` (RLS `can_read/edit_portal`).
+- **Consequências:** Cadastro de nova cidade é só `knews.cities` + `knews.portals` + `knews.portal_domains` + fontes/editorias/ads — sem alteração de código. SEO e inventário publicitário por subdomínio. Requer DNS wildcard e Vercel Domains configurados antes de produção.
+- **Alternativas rejeitadas:** Um domínio por cidade com deploys separados (custo/operacional inviável); path-based `/cidade` (pior SEO local e compartilhamento); reuso de `knews.example.com`.
+
 ---
 *Próximas ADRs serão acrescentadas por fase (ex.: escolha de provedor de pesquisa, estratégia de CDN, retenção de logs).*

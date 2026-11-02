@@ -19,18 +19,35 @@ describe("editorial engine", () => {
     expect(r.isAutoPublishable).toBe(false);
   });
 
-  it("permite autopublicacao apenas com evidencia forte e baixo risco", () => {
+  it("permite autopublicacao apenas com evidencia forte, fontes independentes e claims verificados", () => {
+    const body = "A prefeitura inaugurou nova unidade com atendimento ampliado na regiao.";
     const r = classifyRiskFromContext({
       title: "Guaruja inaugura unidade de saude no Pereque",
-      body: "A prefeitura inaugurou nova unidade com atendimento ampliado na regiao. ".repeat(10),
+      body: `${body} `.repeat(10),
       evidences: [
-        { sourceUrl: "https://guaruja.sp.gov.br/nota", sourceType: "official", isPrimary: true },
-        { sourceUrl: "https://diariooficial.guaruja.sp.gov.br/edicao", sourceType: "official" },
+        { sourceUrl: "https://guaruja.sp.gov.br/nota", sourceType: "official", isPrimary: true, contentSnippet: body },
+        { sourceUrl: "https://diariooficial.guaruja.sp.gov.br/edicao", sourceType: "official", contentSnippet: body },
       ],
+      claims: [body],
     });
     expect(r.level).toBe("low");
     expect(r.evidenceQuality).toBe("strong");
     expect(r.isAutoPublishable).toBe(true);
+  });
+
+  it("bloqueia quando claims nao tem suporte nas evidencias", () => {
+    const r = classifyRiskFromContext({
+      title: "Guaruja inaugura unidade de saude no Pereque",
+      body: "A prefeitura inaugurou nova unidade com atendimento ampliado na regiao. ".repeat(10),
+      evidences: [
+        { sourceUrl: "https://guaruja.sp.gov.br/nota", sourceType: "official", isPrimary: true, contentSnippet: "Comunicado curto sem detalhes" },
+        { sourceUrl: "https://diariooficial.guaruja.sp.gov.br/edicao", sourceType: "official", contentSnippet: "Outro comunicado curto" },
+      ],
+      claims: ["A nova unidade custou 50 milhoes e atende 10 mil pessoas por dia com tecnologia importada"],
+    });
+    expect(r.level).toBe("blocked");
+    expect(r.unverifiedClaims.length).toBeGreaterThan(0);
+    expect(r.isAutoPublishable).toBe(false);
   });
 
   it("detecta clickbait", () => {
@@ -38,15 +55,20 @@ describe("editorial engine", () => {
     expect(detectClickbait("Inauguracao de unidade de saude")).toBe(false);
   });
 
-  it("assessEvidenceQuality exige URLs validas e primarias", () => {
+  it("assessEvidenceQuality exige URLs validas, fontes independentes e primarias", () => {
     expect(assessEvidenceQuality([])).toBe("none");
     expect(assessEvidenceQuality([{ sourceUrl: "not-a-url" }])).toBe("none");
     expect(assessEvidenceQuality([{ sourceUrl: "https://example.com/a" }])).toBe("weak");
     expect(assessEvidenceQuality([{ sourceUrl: "https://a.com", sourceType: "official", isPrimary: true }])).toBe("sufficient");
+    expect(assessEvidenceQuality([{ sourceUrl: "https://example.com/a" }, { sourceUrl: "https://example.com/b" }])).toBe("sufficient");
     expect(assessEvidenceQuality([
       { sourceUrl: "https://a.com", sourceType: "official", isPrimary: true },
       { sourceUrl: "https://b.com", sourceType: "official" },
     ])).toBe("strong");
+    expect(assessEvidenceQuality([
+      { sourceUrl: "https://guaruja.sp.gov.br/a" },
+      { sourceUrl: "https://guaruja.sp.gov.br/b" },
+    ])).not.toBe("strong");
   });
 
   it("detectSensitiveCategories encontra alegacao sensivel", () => {

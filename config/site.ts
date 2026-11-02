@@ -1,3 +1,5 @@
+import { PRIMARY_DOMAIN } from "@/lib/domains";
+
 export const siteConfig = {
   name: "K-NEWS",
   title: "K-NEWS — Rede de Notícias Hiperlocais",
@@ -5,6 +7,6 @@ export const siteConfig = {
   version: "0.1.0-fase0",
   locale: "pt-BR",
   links: {
-    portal: "https://knews.example.com",
+    portal: `https://${PRIMARY_DOMAIN}`,
   },
 } as const;

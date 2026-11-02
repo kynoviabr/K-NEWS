@@ -19,11 +19,10 @@ Deno.serve(async (req: Request) => {
   const headerOk = CRON_SECRET && cronSecret === CRON_SECRET;
   const isCron = bearerOk || headerOk;
 
+  // verify_jwt = false: o segredo do cron e a unica credencial aceita. Antes,
+  // qualquer "Bearer <valor>" (ou GET sem cabecalho) passava e usava a service role.
   if (!isCron) {
-    const serviceAuth = req.headers.get("authorization")?.startsWith("Bearer ") ?? false;
-    if (!serviceAuth && req.method !== "GET") {
-      return jsonResponse({ success: false, error: "Unauthorized" }, 401);
-    }
+    return jsonResponse({ success: false, error: "Unauthorized" }, 401);
   }
 
   if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {

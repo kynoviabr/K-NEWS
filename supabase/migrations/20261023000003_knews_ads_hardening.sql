@@ -21,9 +21,10 @@ create table if not exists knews.ad_campaign_geo_targets (
   campaign_id uuid not null references knews.ad_campaigns(id) on delete cascade,
   city_slug text,
   portal_slug text,
-  check (city_slug is not null or portal_slug is not null),
-  unique(campaign_id, coalesce(city_slug, ''), coalesce(portal_slug, ''))
+  check (city_slug is not null or portal_slug is not null)
 );
+-- Expressoes nao sao permitidas em constraint UNIQUE de tabela; usar indice unico.
+create unique index if not exists uq_knews_ad_geo_targets on knews.ad_campaign_geo_targets(campaign_id, coalesce(city_slug, ''), coalesce(portal_slug, ''));
 
 alter table knews.ad_campaign_placements enable row level security;
 alter table knews.ad_campaign_geo_targets enable row level security;
