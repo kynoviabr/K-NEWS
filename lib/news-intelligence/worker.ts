@@ -7,6 +7,7 @@ import { classifyTerritory, type TerritoryCatalog } from "@/lib/geo";
 import { canonicalDedupKey, slugify, titleFingerprint } from "@/lib/news-intelligence/fingerprint";
 import { checkDraft } from "@/lib/news-intelligence/draft-guard";
 import { logger } from "@/lib/logger";
+import { handleSocialMetrics, handleSocialPublish, SocialStop, socialConfigFromEnv, type SocialConfig } from "@/lib/social/publisher";
 
 // Worker da fila duravel knews.jobs. Roda com service_role (rota interna ou script),
 // nunca no browser. Cada handler e idempotente: reexecutar um job nao duplica efeitos.
@@ -17,11 +18,12 @@ export type WorkerDeps = {
   ai?: AiProviderClient;
   fetchOptions?: SafeFetchOptions;
   leaseSeconds?: number;
+  social?: SocialConfig;
 };
 
 export class NonRetryableError extends Error {}
 
-type Job = { id: string; portal_id: string | null; job_type: string; payload: Record<string, unknown>; attempts: number };
+type Job = { id: string; portal_id: string | null; job_type: string; payload: Record<string, unknown>; attempts: number; max_attempts?: number };
 
 export type WorkerReport = { claimed: number; completed: number; failed: number; results: Array<{ jobId: string; jobType: string; ok: boolean; detail: unknown }> };
 
@@ -205,6 +207,8 @@ export async function handleDraft(deps: WorkerDeps, job: Job): Promise<Record<st
 const HANDLERS: Record<string, (deps: WorkerDeps, job: Job) => Promise<Record<string, unknown>>> = {
   rss_fetch: handleRssFetch,
   draft: handleDraft,
+  social_publish: (deps, job) => handleSocialPublish(deps.db, deps.social ?? socialConfigFromEnv(), job),
+  social_metrics: (deps, job) => handleSocialMetrics(deps.db, deps.social ?? socialConfigFromEnv(), job),
 };
 
 export async function runWorker(deps: WorkerDeps, limit = 10): Promise<WorkerReport> {
@@ -222,7 +226,7 @@ export async function runWorker(deps: WorkerDeps, limit = 10): Promise<WorkerRep
       report.results.push({ jobId: job.id, jobType: job.job_type, ok: true, detail: result });
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
-      await db.rpc("fail_job", { p_job_id: job.id, p_error: message.slice(0, 1000), p_retry: !(e instanceof NonRetryableError) });
+      await db.rpc("fail_job", { p_job_id: job.id, p_error: message.slice(0, 1000), p_retry: !(e instanceof NonRetryableError || e instanceof SocialStop) });
       logger.error("knews-worker", "job falhou", { jobId: job.id, jobType: job.job_type, error: message });
       report.failed++;
       report.results.push({ jobId: job.id, jobType: job.job_type, ok: false, detail: message });

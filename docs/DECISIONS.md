@@ -99,5 +99,13 @@
 - **Consequências:** páginas do portal ficam dinâmicas (já eram, por hostname). `lib/ad-inventory.ts`/`lib/ad-eligibility.ts` ficam como referência de regras em memória; a fonte da verdade é o banco. Exige `KNEWS_VISITOR_SALT` em produção.
 - **Alternativas rejeitadas:** decisão no cliente via API pública (permitiria esgotar inventário com chamadas forjadas); Redis para contadores (serviço novo sem aprovação).
 
+## ADR-015 — Distribuição social com envio no máximo uma vez
+
+- **Data:** 2026-10-24 · **Status:** Aceita
+- **Contexto:** reenviar um post após timeout duplica a publicação na página da cidade, e a Graph API não tem chave de idempotência. Tokens de página dão poder de publicar em nome do portal.
+- **Decisão:** um post por matéria e rede (chave forçada pelo banco). `knews.begin_social_publish` trava a linha e marca `publishing` antes da chamada; só respostas da Meta que dizem que nada foi criado (5xx, limite de taxa) voltam para a fila. Sem resposta, ou job retomado que encontra `publishing`, vira `needs_check` e espera a equipe conferir. No Instagram o container (sem efeito público) é guardado e reaproveitado. Token cifrado com AES-256-GCM no servidor (`KNEWS_SOCIAL_TOKEN_KEY`, AAD portal+rede), nunca legível pelo painel, enviado só no cabeçalho `Authorization`. Envio real exige `KNEWS_SOCIAL_PUBLISHING=enabled`.
+- **Consequências:** uma falha de rede pode deixar um post sem envio automático até alguém conferir; preferimos isso à duplicação. Conexão por token colado no painel até haver app Meta aprovado com login OAuth.
+- **Alternativas rejeitadas:** Supabase Vault para os tokens (recurso compartilhado com o BLOGGER no mesmo projeto); repetir às cegas com backoff (duplica posts); ferramenta externa de agendamento (serviço novo sem aprovação).
+
 ---
 *Próximas ADRs serão acrescentadas por fase (ex.: escolha de provedor de pesquisa, estratégia de CDN, retenção de logs).*
