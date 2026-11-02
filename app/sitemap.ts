@@ -1,17 +1,21 @@
 import type { MetadataRoute } from "next";
-import { headers } from "next/headers";
-import { extractCitySlugFromHost, PRIMARY_DOMAIN } from "@/lib/domains";
 import { canonicalUrl } from "@/lib/portal";
+import { listPublished, resolveRequestPortal } from "@/lib/portal-data";
 
+export const dynamic = "force-dynamic";
+
+// Sitemap por hostname: cada portal lista apenas as proprias materias publicadas.
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const host = (await headers()).get("host");
-  const citySlug = extractCitySlugFromHost(host);
-  const now = new Date();
-  const base = citySlug ? `https://${citySlug}.${PRIMARY_DOMAIN}` : (process.env.NEXT_PUBLIC_APP_URL ?? `https://${PRIMARY_DOMAIN}`);
-  // Em producao: consultar knews.articles published por portal/cidade; por ora rotas base por portal
+  const portal = await resolveRequestPortal().catch(() => null);
+  if (!portal) return [{ url: canonicalUrl("/"), lastModified: new Date(), changeFrequency: "daily", priority: 0.5 }];
+  const articles = await listPublished(portal.id, 50).catch(() => []);
   return [
-    { url: canonicalUrl("/", citySlug) || `${base}/`, lastModified: now, changeFrequency: "hourly", priority: 1 },
-    { url: canonicalUrl("/portal", citySlug) || `${base}/portal`, lastModified: now, changeFrequency: "hourly", priority: 0.9 },
-    { url: `${base}/sitemap.xml`, lastModified: now, changeFrequency: "daily", priority: 0.5 },
+    { url: canonicalUrl("/portal", portal.slug), lastModified: new Date(), changeFrequency: "hourly", priority: 1 },
+    ...articles.map((a) => ({
+      url: canonicalUrl(`/portal/noticia/${a.slug}`, portal.slug),
+      lastModified: new Date(a.updated_at),
+      changeFrequency: "daily" as const,
+      priority: 0.8,
+    })),
   ];
 }
