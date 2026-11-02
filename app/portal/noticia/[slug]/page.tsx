@@ -4,7 +4,7 @@ import Link from "next/link";
 import { AdSlot } from "@/components/advertising/ad-slot";
 import { newsArticleJsonLd } from "@/lib/seo";
 import { portalUrl } from "@/lib/portal";
-import { getPublished, getSections, resolveRequestPortal } from "@/lib/portal-data";
+import { getPublished, getSections, portalBase, resolveRequestPortal } from "@/lib/portal-data";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { slug } = await params;
   const found = await load(slug);
   if (!found) return { title: "Matéria não encontrada" };
-  const url = portalUrl(found.portal, `/portal/noticia/${slug}`);
+  const url = portalUrl(found.portal, `/noticia/${slug}`);
   return {
     title: `${found.article.title} — ${found.portal.name}`,
     description: found.article.excerpt ?? undefined,
@@ -35,8 +35,8 @@ export default async function NoticiaPage({ params }: Params) {
   const found = await load(slug);
   if (!found) notFound();
   const { portal, article } = found;
-  const url = portalUrl(portal, `/portal/noticia/${slug}`);
-  const sections = await getSections(portal.id);
+  const url = portalUrl(portal, `/noticia/${slug}`);
+  const [sections, base] = await Promise.all([getSections(portal.id), portalBase()]);
   const category = sections.categories.find((c) => c.slug === article.category);
   const neighborhood = sections.neighborhoods.find((n) => n.slug === article.neighborhood);
   const jsonLd = newsArticleJsonLd({
@@ -51,12 +51,12 @@ export default async function NoticiaPage({ params }: Params) {
   return (
     <article className="mx-auto max-w-3xl space-y-6 p-4 md:p-6">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
-      <Link href="/portal" className="text-sm text-primary hover:underline">← {portal.name}</Link>
+      <Link href={base || "/"} className="text-sm text-primary hover:underline">← {portal.name}</Link>
       <header className="space-y-2">
         {(category || neighborhood) && (
           <p className="flex gap-3 text-xs font-semibold uppercase tracking-wide text-[hsl(var(--knews-primary))]">
-            {category && <Link href={`/portal/editoria/${category.slug}`} className="hover:underline">{category.name}</Link>}
-            {neighborhood && <Link href={`/portal/bairro/${neighborhood.slug}`} className="hover:underline">{neighborhood.name}</Link>}
+            {category && <Link href={`${base}/editoria/${category.slug}`} className="hover:underline">{category.name}</Link>}
+            {neighborhood && <Link href={`${base}/bairro/${neighborhood.slug}`} className="hover:underline">{neighborhood.name}</Link>}
           </p>
         )}
         <h1 className="font-heading text-3xl font-bold leading-tight tracking-tight">{article.title}</h1>

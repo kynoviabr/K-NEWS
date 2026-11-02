@@ -22,7 +22,7 @@ test("editora aprova, materia vai ao ar e sai do ar com motivo", async ({ page }
   // Publicada, a tela troca o formulario de decisao pelo de retirada.
   await expect(page.getByRole("button", { name: "Retirar do ar" })).toBeVisible();
 
-  const live = await hostFetch(page, E2E.hosts.guaruja, `/portal/noticia/${E2E.articles.review.slug}`);
+  const live = await hostFetch(page, E2E.hosts.guaruja, `/noticia/${E2E.articles.review.slug}`);
   expect(live.status()).toBe(200);
   expect(await live.text()).toContain(E2E.articles.review.title);
 
@@ -31,7 +31,7 @@ test("editora aprova, materia vai ao ar e sai do ar com motivo", async ({ page }
   // Fora do ar, a materia volta a aceitar decisao editorial.
   await expect(page.getByRole("button", { name: "Confirmar decisão" })).toBeVisible();
   await expect(page.getByText(/unpublished/)).toBeVisible();
-  expect((await hostFetch(page, E2E.hosts.guaruja, `/portal/noticia/${E2E.articles.review.slug}`)).status()).toBe(404);
-  await page.goto(portalUrl(E2E.hosts.guaruja, "/portal"));
+  expect((await hostFetch(page, E2E.hosts.guaruja, `/noticia/${E2E.articles.review.slug}`)).status()).toBe(404);
+  await page.goto(portalUrl(E2E.hosts.guaruja, "/"));
   await expect(page.getByRole("link", { name: E2E.articles.review.title })).toHaveCount(0);
 });

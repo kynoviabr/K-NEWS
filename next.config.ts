@@ -20,14 +20,8 @@ const nextConfig: NextConfig = {
     serverActions: { bodySizeLimit: "3mb" },
   },
   async headers() {
-    return [
-      { source: "/:path*", headers: securityHeaders },
-      // Painel, login e APIs fora dos buscadores; portal, sitemap, robots e ads.txt indexaveis.
-      {
-        source: "/((?!portal|sitemap\\.xml|robots\\.txt|ads\\.txt|opengraph-image).*)",
-        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
-      },
-    ];
+    // X-Robots-Tag do painel sai do middleware, que sabe se o host e painel ou portal.
+    return [{ source: "/:path*", headers: securityHeaders }];
   },
 };
 

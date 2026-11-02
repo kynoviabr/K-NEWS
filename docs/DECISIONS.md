@@ -123,5 +123,13 @@
 - **Consequências:** o monitor externo ainda precisa ser escolhido e aprovado. Operador técnico vê a fila de todos os portais pelo resumo, mas só reprocessa por id.
 - **Alternativas rejeitadas:** painel do Supabase para operar a fila (dá acesso ao BLOGGER); serviço de observabilidade novo (sem aprovação).
 
+## ADR-018 — Portal na raiz do domínio da cidade, painel em host próprio
+
+- **Data:** 2026-11-02 · **Status:** Aceita
+- **Contexto:** o portal respondia em `/portal` no mesmo host do painel. URLs de notícia com `/portal` são piores para SEO e compartilhamento, e servir login e Server Actions do painel no domínio público amplia a superfície de ataque.
+- **Decisão:** o host decide a superfície. `localhost`, `*.vercel.app` e `KNEWS_PANEL_HOSTS` são painel; qualquer outro host é portal, servido na raiz por reescrita no middleware para `app/portal`. No host do portal, `/portal/...` redireciona (308), rotas do painel dão 404 e o middleware não abre sessão. Canonical, sitemap e links sociais usam a raiz. `noindex` sai do middleware. A moldura do painel (`AppShell`) passa a ficar só em `app/(admin)/layout.tsx`.
+- **Consequências:** o deploy precisa de um host de painel (ex.: `painel.portal24h.news`) em `KNEWS_PANEL_HOSTS`; sem ele o painel só abre em `*.vercel.app`. Domínio novo de cidade não exige código.
+- **Alternativas rejeitadas:** dois projetos Vercel (dobra deploy e segredos); `basePath` do Next (vale para o app inteiro, não por host).
+
 ---
 *Próximas ADRs serão acrescentadas por fase (ex.: escolha de provedor de pesquisa, estratégia de CDN, retenção de logs).*
