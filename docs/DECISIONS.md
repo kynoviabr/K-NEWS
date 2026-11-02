@@ -107,5 +107,13 @@
 - **Consequências:** uma falha de rede pode deixar um post sem envio automático até alguém conferir; preferimos isso à duplicação. Conexão por token colado no painel até haver app Meta aprovado com login OAuth.
 - **Alternativas rejeitadas:** Supabase Vault para os tokens (recurso compartilhado com o BLOGGER no mesmo projeto); repetir às cegas com backoff (duplica posts); ferramenta externa de agendamento (serviço novo sem aprovação).
 
+## ADR-016 — Acesso de parceiros derivado do território
+
+- **Data:** 2026-10-24 · **Status:** Aceita
+- **Contexto:** parceiros regionais são empresas externas que vendem publicidade numa área. Dar vínculos manuais por portal deixa acesso sobrando quando o contrato com o parceiro acaba, e o parceiro não pode definir a própria comissão nem confirmar a receita que a gera.
+- **Decisão:** território exclusivo por cidade ou região; vínculos `commercial_partner` mantidos por gatilho a partir de território, parceiro e pessoas (marcados com `partner_id`), para que todo o RBAC existente (`can_sell_portal`, seletor de portal) funcione sem mudanças e a revogação seja imediata. Comissão vem do território; receita confirmada só pela gestão; livro-razão `partner_commissions` com aprovação e pagamento pela rede. Comercial lê só matéria publicada.
+- **Consequências:** parceiro vê todo o comercial dos portais do território (por isso a exclusividade). Uma conta não acumula papel interno e de parceiro.
+- **Alternativas rejeitadas:** checar o território em cada política (exigiria reescrever todas as políticas comerciais e o contexto do painel); cálculo de comissão na tela (sem histórico nem aprovação).
+
 ---
 *Próximas ADRs serão acrescentadas por fase (ex.: escolha de provedor de pesquisa, estratégia de CDN, retenção de logs).*

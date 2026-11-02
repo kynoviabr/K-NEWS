@@ -4,9 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { canSell, getAdminContext } from "@/lib/admin-context";
+import { canManage, canSell, getAdminContext, isSuperAdmin } from "@/lib/admin-context";
 import { getKnewsSessionClient } from "@/lib/supabase/knews";
-import { computeCommissions, formatCents, summarizeRevenue, type ContractRow, type RevenueRow } from "@/lib/ads/visitor";
+import { formatCents, summarizeRevenue, type RevenueRow } from "@/lib/ads/visitor";
 import { NotSignedIn, PortalSwitcher } from "../portal-switcher";
 import { ActionForm } from "../ads/action-form";
 import { createRevenue, setRevenueStatus } from "../ads/actions";
@@ -30,7 +30,7 @@ export default async function ComercialPage({ searchParams }: { searchParams: Pr
     <div className="flex flex-wrap items-end justify-between gap-4">
       <div>
         <h1 className="font-heading text-2xl font-bold tracking-tight">Comercial</h1>
-        <p className="text-sm text-muted-foreground">Entrega, receitas e comissões. Receita só conta como confirmada quando o parceiro ou o contrato confirma; cliques não são vendas.</p>
+        <p className="text-sm text-muted-foreground">Entrega, receitas e comissões. Receita só conta depois que a gestão do portal confirma; cliques não são vendas.</p>
       </div>
       <PortalSwitcher ctx={ctx} back="/comercial" />
     </div>
@@ -46,7 +46,7 @@ export default async function ComercialPage({ searchParams }: { searchParams: Pr
 
   const portalId = ctx.active.portalId;
   const { knews } = await getKnewsSessionClient();
-  const [statsRes, revenueRes, contractsRes, linkClicksRes] = await Promise.all([
+  const [statsRes, revenueRes, contractsRes, commissionsRes, linkClicksRes] = await Promise.all([
     knews.from("ad_daily_stats").select("campaign_id, reserved, impressions, clicks, ad_campaigns(name, kind)").eq("portal_id", portalId).gte("day", from).lte("day", to),
     knews
       .from("ad_revenue_entries")
@@ -55,7 +55,15 @@ export default async function ComercialPage({ searchParams }: { searchParams: Pr
       .lte("period_start", to)
       .gte("period_end", from)
       .order("period_start", { ascending: false }),
-    knews.from("ad_contracts").select("id, reference, partner_id, commission_pct").eq("portal_id", portalId),
+    knews.from("ad_contracts").select("id, reference").eq("portal_id", portalId).order("reference"),
+    // Livro de comissoes (knews.partner_commissions): gerado pela receita confirmada.
+    knews
+      .from("partner_commissions")
+      .select("id, base_cents, pct, amount_cents, status, needs_review, ad_contracts(reference)")
+      .eq("portal_id", portalId)
+      .lte("period_start", to)
+      .gte("period_end", from)
+      .neq("status", "cancelled"),
     knews.from("ad_link_clicks").select("link_id, ad_links(title, code)").eq("portal_id", portalId).gte("at", `${from}T03:00:00Z`).lte("at", `${to}T23:59:59-03:00`).limit(10000),
   ]);
 
@@ -69,9 +77,12 @@ export default async function ComercialPage({ searchParams }: { searchParams: Pr
     delivery.set(s.campaign_id, row);
   }
   const revenue = (revenueRes.data ?? []) as Array<RevenueRow & { id: string; period_start: string; period_end: string; reference: string | null }>;
-  const contracts = (contractsRes.data ?? []) as ContractRow[];
   const totals = summarizeRevenue(revenue.filter((r) => r.status !== "cancelled"));
-  const commissions = computeCommissions(revenue, contracts);
+  const contracts = (contractsRes.data ?? []) as Array<{ id: string; reference: string }>;
+  type CommissionRow = { id: string; base_cents: number; pct: number; amount_cents: number; status: string; needs_review: boolean; ad_contracts: { reference: string } | null };
+  const commissions = (commissionsRes.data ?? []) as unknown as CommissionRow[];
+  // Receita que gera comissao so e confirmada pela gestao (o banco tambem barra).
+  const confirmer = canManage(ctx.active) || isSuperAdmin(ctx);
   const bySource = new Map<string, number>();
   for (const r of revenue) if (r.status === "confirmed" || r.status === "paid") bySource.set(r.source, (bySource.get(r.source) ?? 0) + Number(r.amount_cents));
   const linkClicks = new Map<string, { title: string; code: string; clicks: number }>();
@@ -114,7 +125,7 @@ export default async function ComercialPage({ searchParams }: { searchParams: Pr
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Comissões de parceiros</CardDescription>
-            <CardTitle className="text-2xl">{formatCents(commissions.reduce((a, c) => a + c.commissionCents, 0))}</CardTitle>
+            <CardTitle className="text-2xl">{formatCents(commissions.reduce((a, c) => a + Number(c.amount_cents), 0))}</CardTitle>
           </CardHeader>
         </Card>
       </div>
@@ -194,6 +205,7 @@ export default async function ComercialPage({ searchParams }: { searchParams: Pr
         <Card>
           <CardHeader>
             <CardTitle>Comissões por contrato</CardTitle>
+            <CardDescription>Aprovação e pagamento ficam com a rede, em Parceiros.</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
@@ -203,15 +215,20 @@ export default async function ComercialPage({ searchParams }: { searchParams: Pr
                   <TableHead className="text-right">Base confirmada</TableHead>
                   <TableHead className="text-right">%</TableHead>
                   <TableHead className="text-right">Comissão</TableHead>
+                  <TableHead>Situação</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {commissions.map((c) => (
-                  <TableRow key={c.contractId}>
-                    <TableCell>{c.reference}</TableCell>
-                    <TableCell className="text-right">{formatCents(c.baseCents)}</TableCell>
-                    <TableCell className="text-right">{c.pct}%</TableCell>
-                    <TableCell className="text-right">{formatCents(c.commissionCents)}</TableCell>
+                  <TableRow key={c.id}>
+                    <TableCell>{c.ad_contracts?.reference ?? "—"}</TableCell>
+                    <TableCell className="text-right">{formatCents(Number(c.base_cents))}</TableCell>
+                    <TableCell className="text-right">{Number(c.pct)}%</TableCell>
+                    <TableCell className="text-right">{formatCents(Number(c.amount_cents))}</TableCell>
+                    <TableCell>
+                      {c.status === "pending" ? <span className="text-sm">A aprovar</span> : <CampaignStatusBadge status={c.status} />}
+                      {c.needs_review && <span className="ml-2 text-xs text-destructive">receita mudou: revisar</span>}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -261,8 +278,8 @@ export default async function ComercialPage({ searchParams }: { searchParams: Pr
                 <Label htmlFor="rv_status">Situação</Label>
                 <Select id="rv_status" name="status" defaultValue="estimated">
                   <option value="estimated">Estimada</option>
-                  <option value="confirmed">Confirmada</option>
-                  <option value="paid">Paga</option>
+                  {confirmer && <option value="confirmed">Confirmada</option>}
+                  {confirmer && <option value="paid">Paga</option>}
                 </Select>
               </div>
               <div className="space-y-1.5 md:col-span-2">
@@ -301,14 +318,14 @@ export default async function ComercialPage({ searchParams }: { searchParams: Pr
                     <TableCell><CampaignStatusBadge status={r.status} /></TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        {r.status === "estimated" && (
+                        {confirmer && r.status === "estimated" && (
                           <form action={setRevenueStatus}>
                             <input type="hidden" name="id" value={r.id} />
                             <input type="hidden" name="status" value="confirmed" />
                             <Button size="sm" type="submit">Confirmar</Button>
                           </form>
                         )}
-                        {r.status === "confirmed" && (
+                        {confirmer && r.status === "confirmed" && (
                           <form action={setRevenueStatus}>
                             <input type="hidden" name="id" value={r.id} />
                             <input type="hidden" name="status" value="paid" />
