@@ -12,30 +12,27 @@ supabase functions serve knews-jobs knews-publish
 
 ## Implantacao controlada no projeto compartilhado `pnhxvhjudtrzvwduuigj`
 
-Antes de qualquer `supabase db push`:
+**Não usar `supabase db push` nem `supabase migration repair` neste projeto.** O histórico do CLI (`supabase_migrations.schema_migrations`) é do BLOGGER: o push recusa porque as versões do BLOGGER não estão neste repositório, e o `repair` que o CLI sugere apagaria esse histórico. As migrations do K-NEWS são aplicadas por `scripts/knews-migrate.mjs` (ADR-019), que guarda o próprio histórico em `knews_migrations.applied` e não lê nem altera o do BLOGGER.
 
-1. Revisar as 13 migrations em ordem (sem `public.*`, sem `DROP public`, `knews.*` com `search_path=''`, `SECURITY DEFINER` auditado).
-2. Verificar que `knews` não referencia `public.*` e vice-versa.
-3. Auditar RLS (`can_read/edit_portal`), Storage bucket `knews-creative`, Vault por `portal_id`.
-4. Verificar que `cron` K-NEWS (`knews-process-jobs`) é distinto de `supabase-process-background-jobs` do BLOGGER.
-5. Garantir backup/PITR do projeto `pnhxvhjudtrzvwduuigj`.
-6. Produzir relatório do SQL e operações previstas (dry-run `supabase db push --linked --dry-run`).
-7. Solicitar autorização explícita — **não executar push automaticamente**.
+O script:
+- só conecta se a URL for do projeto `pnhxvhjudtrzvwduuigj` (ou local) e nunca imprime a URL;
+- recusa migrations que citem `public.`, `supabase_migrations`, roles, banco ou privilégios padrão;
+- para se já existir schema `knews`/`knews_public` ou bucket `knews-*` sem histórico (estado parcial), ou se uma migration aplicada mudou (checksum);
+- sem `--apply` só lista o que seria aplicado; com `--apply` roda cada migration numa transação própria, com trava contra execução simultânea.
 
-```bash
-supabase link --project-ref pnhxvhjudtrzvwduuigj
-supabase db push --linked --dry-run   # revisar diff
-# apos autorizacao:
-supabase db push --linked
-supabase functions deploy knews-jobs knews-publish
-```
+Passos (Mac, pasta do repositório na `main`):
 
-13 migrations `knews` em ordem (não tocam `public.*`; `20261027000002` endurece RLS e grants):
-- `20261021000001_knews_foundation` (`knews` schema, `knews.jobs`, `knews.articles`, `knews.portals`, `can_read/edit_portal`)
-- `20261022000002` / `20261023000001` / `20261023000003` (editorial + ads hardening)
-- `20261024000001` (`knews.sources` / `fetch_logs`), `20261024000002` (`job_events`, `claim_jobs` SKIP LOCKED), `20261024000003` (`knews-creative` bucket + `ad_creatives`)
-- `20261025000001` (`ad_reservations/events`, `knews.reserve_ad`)
-- `20261026000001` .. `20261027000001` (news admin / publication / social-partners / observability)
+1. Confirmar no Dashboard (Database → Backups) que há backup recente.
+2. `npm ci`
+3. Pegar a connection string em Dashboard → Connect → **Session pooler** (porta 5432) e guardar sem eco e fora do histórico do shell:
+   ```zsh
+   read -rs "KNEWS_DATABASE_URL?Connection string: "; export KNEWS_DATABASE_URL
+   ```
+4. `npm run db:knews` (sem argumentos): conferir projeto e a lista de pendentes.
+5. `npm run db:knews -- --apply`
+6. Depois: expor `knews` e `knews_public` na API (Settings → API → Exposed schemas, mantendo os do BLOGGER) e criar o agendamento do worker (`docs/LAUNCH-CHECKLIST.md`).
+
+Testado localmente: num Supabase vazio com um histórico falso do BLOGGER, aplicou as 20 migrations, deixou o histórico do BLOGGER intacto, a segunda execução não teve pendências e os 80 testes de integração passaram sobre o banco migrado pelo script.
 
 ## Validacao (sem BLOGGER, sem DNS final)
 
