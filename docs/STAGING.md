@@ -20,15 +20,12 @@ O script:
 - para se já existir schema `knews`/`knews_public` ou bucket `knews-*` sem histórico (estado parcial), ou se uma migration aplicada mudou (checksum);
 - sem `--apply` só lista o que seria aplicado; com `--apply` roda cada migration numa transação própria, com trava contra execução simultânea.
 
-Passos (Mac, pasta do repositório na `main`):
+Passos (Mac, pasta do repositório já linkada com `supabase link --project-ref pnhxvhjudtrzvwduuigj`):
 
 1. Confirmar no Dashboard (Database → Backups) que há backup recente.
 2. `npm ci`
-3. Pegar a connection string em Dashboard → Connect → **Session pooler** (porta 5432) e guardar sem eco e fora do histórico do shell:
-   ```zsh
-   read -rs "KNEWS_DATABASE_URL?Connection string: "; export KNEWS_DATABASE_URL
-   ```
-4. `npm run db:knews` (sem argumentos): conferir projeto e a lista de pendentes.
+3. `npm run db:knews`: o script lê o endereço do pooler gravado pelo `supabase link` (`supabase/.temp/pooler-url`, porta 5432), pede a senha do banco sem eco e lista o projeto e as pendências. Senha com `@`, `#`, `/` ou `%` funciona. `KNEWS_DATABASE_URL` substitui o endereço, se preciso.
+4. Conferir a saída.
 5. `npm run db:knews -- --apply`
 6. Depois: expor `knews` e `knews_public` na API (Settings → API → Exposed schemas, mantendo os do BLOGGER) e criar o agendamento do worker (`docs/LAUNCH-CHECKLIST.md`).
 

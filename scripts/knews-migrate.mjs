@@ -6,14 +6,16 @@
 // `migration repair` que o CLI sugere apagaria esse historico. Aqui o historico do K-NEWS fica
 // em knews_migrations.applied e o do BLOGGER nao e lido nem alterado.
 //
-// Uso (sem argumentos so mostra o que seria aplicado):
-//   KNEWS_DATABASE_URL='postgresql://...' node scripts/knews-migrate.mjs
-//   KNEWS_DATABASE_URL='postgresql://...' node scripts/knews-migrate.mjs --apply
+// Uso (sem argumentos so mostra o que seria aplicado), na pasta ja linkada com `supabase link`:
+//   npm run db:knews              -> pede a senha do banco (sem eco) e lista o que seria aplicado
+//   npm run db:knews -- --apply   -> aplica
+// O endereco vem de supabase/.temp/pooler-url (gravado pelo `supabase link`), em modo sessao
+// (porta 5432). KNEWS_DATABASE_URL substitui esse endereco; senha com @, #, / etc. funciona.
 //
-// A URL nunca e impressa. Cada migration roda numa transacao propria; um erro desfaz so ela e para.
+// A URL e a senha nunca sao impressas. Cada migration roda numa transacao propria; um erro desfaz so ela e para.
 
 import { createHash } from "node:crypto";
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
@@ -22,7 +24,8 @@ const EXPECTED_REF = process.env.KNEWS_EXPECTED_PROJECT_REF ?? "pnhxvhjudtrzvwdu
 const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost"]);
 const LOCK_KEY = 0x6b6e657773; // "knews"
 const apply = process.argv.includes("--apply");
-const dir = join(dirname(fileURLToPath(import.meta.url)), "..", "supabase", "migrations");
+const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+const dir = join(root, "supabase", "migrations");
 
 function fail(message) {
   console.error(`\nPARADO: ${message}`);
@@ -52,15 +55,72 @@ function migrations() {
     });
 }
 
-async function main() {
-  const url = process.env.KNEWS_DATABASE_URL;
-  if (!url) fail("defina KNEWS_DATABASE_URL (Dashboard > Connect > Session pooler, porta 5432).");
-  let parsed;
-  try {
-    parsed = new URL(url);
-  } catch {
-    fail("KNEWS_DATABASE_URL invalida.");
+// Senha digitada sem eco no terminal.
+function askHidden(prompt) {
+  return new Promise((resolve) => {
+    const { stdin, stdout } = process;
+    if (!stdin.isTTY) fail("rode num terminal interativo para digitar a senha.");
+    stdout.write(prompt);
+    stdin.setRawMode(true);
+    stdin.resume();
+    stdin.setEncoding("utf8");
+    let value = "";
+    const onData = (chunk) => {
+      for (const ch of chunk) {
+        if (ch === "\r" || ch === "\n") {
+          stdin.setRawMode(false);
+          stdin.pause();
+          stdin.off("data", onData);
+          stdout.write("\n");
+          resolve(value);
+          return;
+        }
+        if (ch === "\u0003") {
+          stdout.write("\n");
+          process.exit(130);
+        }
+        if (ch === "\u007f" || ch === "\b") value = value.slice(0, -1);
+        else value += ch;
+      }
+    };
+    stdin.on("data", onData);
+  });
+}
+
+// Aceita senha crua na URL (com @, # etc.): o host comeca depois do ULTIMO @.
+function parseLoose(raw) {
+  const m = /^(postgres(?:ql)?):\/\/([^:/]+)(?::(.*))?@([^@/]+)(\/[^?#]*)?(\?.*)?$/.exec(raw.trim());
+  if (!m) return null;
+  const [, scheme, user, password, hostPort, path = "/postgres", query = ""] = m;
+  const url = new URL(`${scheme}://${hostPort}${path}${query}`);
+  url.username = user;
+  // O setter do URL nao escapa "%"; escapa tudo antes para a senha chegar intacta.
+  if (password !== undefined) url.password = encodeURIComponent(password);
+  return url;
+}
+
+async function resolveUrl() {
+  if (process.env.KNEWS_DATABASE_URL) {
+    const url = parseLoose(process.env.KNEWS_DATABASE_URL);
+    if (!url) fail("KNEWS_DATABASE_URL invalida (esperado postgresql://usuario:senha@host:porta/postgres).");
+    if (url.password.includes("YOUR-PASSWORD")) fail("troque [YOUR-PASSWORD] pela senha do banco, sem colchetes.");
+    return url;
   }
+  const file = join(root, "supabase", ".temp", "pooler-url");
+  if (!existsSync(file)) fail("rode `supabase link --project-ref " + EXPECTED_REF + "` nesta pasta antes (ou defina KNEWS_DATABASE_URL).");
+  const url = parseLoose(readFileSync(file, "utf8"));
+  if (!url) fail("supabase/.temp/pooler-url invalido; rode `supabase link` de novo.");
+  // Pooler em modo sessao (5432): uma transacao por migration precisa de conexao fixa.
+  if (url.hostname.endsWith(".pooler.supabase.com")) url.port = "5432";
+  const password = await askHidden("Senha do banco (nao aparece na tela): ");
+  if (!password) fail("senha vazia.");
+  url.password = encodeURIComponent(password);
+  return url;
+}
+
+async function main() {
+  const parsed = await resolveUrl();
+  const url = parsed.toString();
   const local = LOCAL_HOSTS.has(parsed.hostname);
   const target = `${parsed.hostname} ${decodeURIComponent(parsed.username)}`;
   if (!local && !target.includes(EXPECTED_REF)) fail(`a conexao nao e do projeto ${EXPECTED_REF}.`);
