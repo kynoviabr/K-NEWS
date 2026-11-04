@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:integration": "vitest run --config vitest.integration.config.ts",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "db:knews": "node scripts/knews-migrate.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.7.0",

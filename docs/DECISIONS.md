@@ -131,5 +131,13 @@
 - **Consequências:** o deploy precisa de um host de painel (ex.: `painel.portal24h.news`) em `KNEWS_PANEL_HOSTS`; sem ele o painel só abre em `*.vercel.app`. Domínio novo de cidade não exige código.
 - **Alternativas rejeitadas:** dois projetos Vercel (dobra deploy e segredos); `basePath` do Next (vale para o app inteiro, não por host).
 
+## ADR-019 — Histórico de migrations próprio no Supabase compartilhado
+
+- **Data:** 2026-11-03 · **Status:** Aceita
+- **Contexto:** o `supabase db push --dry-run` no projeto `pnhxvhjudtrzvwduuigj` recusou: `supabase_migrations.schema_migrations` guarda as migrations do BLOGGER, que não existem neste repositório. O CLI sugere `migration repair --status reverted` dessas versões, o que apagaria o histórico do BLOGGER; registrar as versões do K-NEWS ali faria o push do BLOGGER recusar.
+- **Decisão:** `scripts/knews-migrate.mjs` aplica `supabase/migrations/*_knews_*.sql` com histórico em `knews_migrations.applied` (versão, arquivo, checksum), uma transação por migration, trava consultiva, checagem do projeto e bloqueio de SQL fora do K-NEWS. Localmente o CLI continua aplicando tudo no `db reset`.
+- **Consequências:** o histórico do CLI não mostra o K-NEWS. Toda migration nova do K-NEWS precisa do sufixo `_knews_` e de timestamp posterior à última aplicada.
+- **Alternativas rejeitadas:** `migration repair` (apaga o histórico do BLOGGER); `db pull` (traria o schema do BLOGGER para este repositório); segundo projeto Supabase (vedado).
+
 ---
 *Próximas ADRs serão acrescentadas por fase (ex.: escolha de provedor de pesquisa, estratégia de CDN, retenção de logs).*

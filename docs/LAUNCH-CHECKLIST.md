@@ -14,8 +14,8 @@
 ## 2. Supabase compartilhado **[autorização]**
 
 - [ ] Backup ou PITR confirmado antes de qualquer migration.
-- [ ] Revisão das 20 migrations `knews_*`: só criam objetos no schema `knews`/`knews_public`, buckets `knews-*` (`knews-creative` privado, `knews-portal-assets` público só para logotipo e favicon) e funções próprias. Conferir com `supabase db diff` que nada do BLOGGER (schema `public`, RLS, triggers) muda.
-- [ ] `supabase db push` no projeto compartilhado, em janela combinada.
+- [ ] Revisão das 20 migrations `knews_*`: só criam objetos no schema `knews`/`knews_public`, buckets `knews-*` (`knews-creative` privado, `knews-portal-assets` público só para logotipo e favicon) e funções próprias. O `scripts/knews-migrate.mjs` recusa SQL fora do K-NEWS (ADR-019).
+- [ ] `npm run db:knews -- --apply` no projeto compartilhado (nunca `supabase db push` nem `migration repair`: o histórico do CLI é do BLOGGER). Passos em `docs/STAGING.md`.
 - [ ] Expor `knews` e `knews_public` na API (Settings → API → Exposed schemas), mantendo os schemas do BLOGGER.
 - [ ] Agendamento pg_cron + pg_net chamando `POST /api/internal/jobs/run` a cada minuto com `Authorization: Bearer <CRON_SECRET>` (ADR-006). O segredo fica no Vault do projeto com nome `knews_cron_secret`, sem tocar segredos do BLOGGER.
 - [ ] Criar o primeiro `super_admin` e os vínculos da equipe de Guarujá.
